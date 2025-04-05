@@ -1,0 +1,254 @@
+.welcome-message {
+  text-align: center;
+  background-color: #e6f9be;
+  padding: 15px;
+  margin: 15px 0;
+  border-radius: 8px;
+  font-size: 1.2rem;
+}
+
+.welcome-message h2 {
+  color: #2d6a4f;
+  font-weight: bold;
+}
+
+.welcome-message p {
+  color: #555;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+
+
+/* 🌾 Farmer Dashboard Main Container */
+.dashboard-container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 🏠 Main Navbar */
+.main-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2e7d32;
+  padding: 15px 20px;
+  border-radius: 8px;
+}
+
+.main-navbar h2 {
+  color: white;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.nav-links {
+  display: flex;
+  gap: 15px;
+}
+
+.nav-links button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 10px 15px;
+  transition: 0.3s;
+}
+
+.nav-links button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+}
+
+/* 🛠️ Secondary Navbar */
+.secondary-navbar {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  background:  #2e7d32;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.secondary-navbar button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.secondary-navbar button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+}
+
+/* 🖼️ Card Design */
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin: 20px 0;
+  transition: transform 0.3s ease-in-out;
+}
+
+.card:hover {
+  transform: scale(1.02);
+}
+
+/* 📦 Product List */
+.products-section h3 {
+  color: #ff9800;
+  font-size: 20px;
+}
+
+/* 🖼️ Farmer Quotes Section */
+.quote-section {
+  text-align: center;
+}
+
+.quote-section img {
+  max-width: 100%;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.quote-section p {
+  font-size: 18px;
+  font-style: italic;
+  color: #2e7d32;
+  font-weight: bold;
+}
+/* 🖼️ Quote Section Layout */
+.quote-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #81e3b2;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 8px rgba(225, 91, 91, 0.1);
+  margin: 20px 0;
+}
+
+/* 📷 Image Styling */
+.quote-image {
+  max-width: 100%;
+  border-radius: 10px;
+}
+
+/* 📝 Quote Text Styling */
+.quote-text {
+  font-size: 20px; /* Increased Font Size */
+  font-style: italic;
+  font-weight: bold;
+  color: #2e7d32; /* Green Shade */
+  max-width: 55%;
+  text-align: center;
+  padding: 20px;
+  background: #e6f9be; /* Light Green Background */
+  border-left: 5px solid #2e7d32; /* Left Green Border */
+  border-radius: 8px;
+  box-shadow: 2px 2px 10px rgba(237, 15, 15, 0.1);
+}
+
+/* 📱 Responsive Design */
+@media (max-width: 768px) {
+  .quote-container {
+      flex-direction: column;
+      text-align: center;
+  }
+  .quote-image {
+      max-width: 100%;
+      margin-bottom: 15px;
+  }
+  .quote-text {
+      max-width: 100%;
+      font-size: 20px;
+  }
+}
+
+
+
+/* 📚 Farmer Resources Section */
+.resources-section {
+  background: #a2ecc7;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+  text-align: center;
+}
+
+.resources-section h2 {
+  color: #0d0e0d;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+/* 🔹 Resource Cards Grid */
+.resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  padding: 10px;
+}
+
+/* 🏷️ Individual Resource Cards */
+.resource-card {
+  background: #e6f9be;
+  border-left: 5px solid #2e7d32;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease-in-out;
+  text-align: center;
+}
+
+.resource-card:hover {
+  transform: scale(1.05);
+  background: #c8e6c9;
+}
+
+/* 🖼️ Resource Images */
+.resource-card img {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+/* 📝 Resource Titles */
+.resource-card h3 {
+  color: #2e7d32;
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+/* 📌 Resource Description */
+.resource-card p {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
+}
+
+/* 📱 Responsive Design */
+@media (max-width: 768px) {
+  .resources-grid {
+    grid-template-columns: 1fr;
+  }
+}

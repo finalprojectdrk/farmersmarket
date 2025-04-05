@@ -1,0 +1,149 @@
+/* Buyer Profile Container */
+.buyer-profile-container {
+  max-width: 500px;
+  margin: 50px auto;
+  padding: 20px;
+  background: #e6f9be;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+/* Heading */
+.buyer-profile-container h2 {
+  color: #333;
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+/* Buyer Info Section */
+.buyer-info {
+  font-size: 18px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.buyer-info p {
+  margin: 10px 0;
+  color: #555;
+  font-weight: 500;
+}
+
+/* Logout Button */
+.logout-btn {
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+}
+
+.logout-btn:hover {
+  background: #cc0000;
+  transform: scale(1.05);
+}
+
+/* Dashboard Buttons */
+.dashboard-buttons {
+  margin-top: 20px;
+}
+
+.dashboard-buttons .dashboard-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin: 5px;
+}
+
+.dashboard-buttons .dashboard-btn:hover {
+  background: #0056b3;
+  transform: scale(1.05);
+}
+
+/* Orders Button */
+.orders-btn {
+  background: #28a745;
+}
+
+.orders-btn:hover {
+  background: #218838;
+}
+
+/* Products Section */
+.products-section {
+  margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .buyer-profile-container {
+      width: 90%;
+      padding: 15px;
+  }
+
+  .logout-btn,
+  .dashboard-buttons .dashboard-btn {
+      width: 100%;
+      margin: 5px 0;
+  }
+}
+
+.buyer-profile-container {
+  text-align: center;
+  margin-top: 50px;
+}
+
+.buyer-info {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  display: inline-block;
+  text-align: left;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.buyer-info p {
+  margin: 8px 0;
+  font-size: 22px;
+}
+
+.dashboard-btn, .logout-btn {
+  display: inline-block;
+  margin-top: 15px;
+  padding: 10px 15px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.dashboard-btn {
+  background-color: #28a745; /* Green */
+  color: white;
+  margin-right: 10px;
+}
+
+.dashboard-btn:hover {
+  background-color: #218838;
+}
+
+.logout-btn {
+  background-color: #dc3545; /* Red */
+  color: white;
+}
+
+.logout-btn:hover {
+  background-color: #c82333;
+}

@@ -1,0 +1,129 @@
+/* Orders Container */
+.orders-container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+/* Page Title */
+.orders-container h2 {
+  color: #2e7d32;
+  font-size: 26px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+/* Empty Cart Message */
+.orders-container p {
+  font-size: 18px;
+  color: #777;
+}
+
+/* Order List */
+.order-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+/* Individual Order Item */
+.order-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #e6f9be;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease-in-out;
+}
+
+.order-item:hover {
+  transform: scale(1.02);
+}
+
+/* Order Image */
+.order-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  object-fit: cover;
+  margin-right: 15px;
+}
+
+/* Order Details */
+.order-details {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.order-details h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.order-details p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Cancel Button */
+.cancel-button {
+  background: #ff5252;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+}
+
+.cancel-button:hover {
+  background: #d32f2f;
+}
+
+/* Checkout Button */
+.checkout-button {
+  display: block;
+  width: 100%;
+  max-width: 250px;
+  margin: 20px auto;
+  padding: 12px;
+  background: #ff9800;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+}
+
+.checkout-button:hover {
+  background: #e68900;
+}
+
+/* Back Button */
+.back-button {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 10px 15px;
+  background: #4CAF50;
+  color: white;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 5px;
+  transition: background 0.3s ease-in-out;
+}
+
+.back-button:hover {
+  background: #2e7d32;
+}

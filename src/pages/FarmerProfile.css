@@ -1,0 +1,139 @@
+/* Farmer Profile Container */
+.farmer-profile-container {
+  max-width: 500px;
+  margin: 50px auto;
+  padding: 20px;
+  background: #daf59f;
+  border-radius: 10px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.farmer-profile-container h2 {
+  color: #333;
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+.farmer-info {
+  font-size: 18px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.farmer-info p {
+  margin: 10px 0;
+  color: #555;
+  font-weight: 500;
+}
+
+/* Logout Button */
+.logout-btn {
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+}
+
+.logout-btn:hover {
+  background: #cc0000;
+  transform: scale(1.05);
+}
+
+/* Dashboard Buttons */
+.dashboard-buttons {
+  margin-top: 20px;
+}
+
+.dashboard-buttons .dashboard-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin: 5px;
+}
+
+.dashboard-buttons .dashboard-btn:hover {
+  background: #0056b3;
+  transform: scale(1.05);
+}
+
+.products-btn {
+  background: #28a745;
+}
+
+.products-btn:hover {
+  background: #218838;
+}
+
+/* 📌 Styling for the Real-Time Price Table */
+.price-section {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.price-section h3 {
+  color: #4caf50;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+/* Table Styling */
+.price-section table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.price-section th,
+.price-section td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+.price-section th {
+  background: #4caf50;
+  color: white;
+  font-size: 16px;
+}
+
+.price-section tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.price-section tr:hover {
+  background-color: #ddd;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .farmer-profile-container {
+      width: 90%;
+      padding: 15px;
+  }
+
+  .logout-btn,
+  .dashboard-buttons .dashboard-btn {
+      width: 100%;
+      margin: 5px 0;
+  }
+
+  .price-section table {
+      font-size: 14px;
+  }
+}

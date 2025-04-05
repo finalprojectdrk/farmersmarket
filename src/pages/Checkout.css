@@ -1,0 +1,79 @@
+/* Container for the checkout page */
+.checkout-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    background:#e6f9be;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+/* Heading */
+.checkout-container h2 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+/* Order summary list */
+.order-summary {
+    list-style: none;
+    padding: 0;
+}
+
+.order-summary li {
+    padding: 10px;
+    background: white;
+    margin: 8px 0;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Button styles */
+.confirm-button {
+    background: #28a745;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 15px;
+    width: 100%;
+}
+
+.confirm-button:hover {
+    background: #218838;
+}
+
+/* Input fields */
+input,
+select {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Payment section */
+.payment-section {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.payment-section label {
+    font-weight: bold;
+    display: block;
+    margin: 10px 0 5px;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    .checkout-container {
+        width: 90%;
+    }
+}

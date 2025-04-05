@@ -1,0 +1,26 @@
+.user-selection {
+    text-align: center;
+    padding: 50px;
+  }
+  
+  .role-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .role-buttons button {
+    padding: 15px 30px;
+    font-size: 18px;
+    cursor: pointer;
+    border: none;
+    background-color: #28a745;
+    color: white;
+    border-radius: 8px;
+  }
+  
+  .role-buttons button:hover {
+    background-color: #218838;
+  }
+  
