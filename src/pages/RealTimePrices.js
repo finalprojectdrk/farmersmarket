@@ -30,9 +30,15 @@ const FarmerDashboard = () => {
         const formattedData = records.map((record) => {
           // Convert price from ₹/quintal to ₹/kg (multiply by 100)
           const priceInKg = parseFloat(record.modal_price) / 100;
-
-          // Format the date to a more readable format (e.g., DD/MM/YYYY)
-          const formattedDate = new Date(record.date).toLocaleDateString("en-IN");
+  // Format the date using date-fns (you could also use other methods)
+          let formattedDate;
+          if (Date.parse(record.date)) {
+            // If the date is valid, format it
+            formattedDate = format(new Date(record.date), "dd/MM/yyyy");
+          } else {
+            // If the date is invalid, use a fallback or default value
+            formattedDate = "Invalid Date";
+          }
 
           return {
             crop: record.commodity,
