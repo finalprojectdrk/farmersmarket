@@ -111,7 +111,7 @@ const FarmerDashboard = () => {
         <h4>Current Date & Time: {currentDateTime}</h4>
       </div>
 
-      {/* ✅ Filter Section */}
+      {/* ✅ Filter Section 
       <div className="filter-section">
         <input
           type="text"
@@ -119,7 +119,7 @@ const FarmerDashboard = () => {
           onChange={handleFilterChange}
           placeholder="Search by crop or market..."
         />
-      </div>
+      </div>*/}
 
       {/* ✅ Real-Time Price Discovery Section */}
       <div className="price-section card">
