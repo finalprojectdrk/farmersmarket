@@ -18,7 +18,12 @@ const FarmerDashboard = () => {
           throw new Error("Failed to fetch crop prices");
         }
         const data = await response.json();
-        setCropPrices(data.records); // Assuming data.records contains the crop prices
+
+        // Debugging: log the API response
+        console.log("API Response: ", data);
+
+        // Assuming data.records contains the crop price data
+        setCropPrices(data.records); // Store the records from the response
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -51,13 +56,19 @@ const FarmerDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {cropPrices.map((crop) => (
-              <tr key={crop.id}>
-                <td>{crop.commodity_name}</td>
-                <td>{crop.market_price}</td>
-                <td>{crop.market_name}</td>
+            {cropPrices.length > 0 ? (
+              cropPrices.map((crop, index) => (
+                <tr key={index}>
+                  <td>{crop.commodity_name}</td>
+                  <td>{crop.market_price}</td>
+                  <td>{crop.market_name}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="3">No data available</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
