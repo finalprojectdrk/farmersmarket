@@ -10,6 +10,7 @@ const FarmerDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [allCropPrices, setAllCropPrices] = useState([]); // Store all crop prices for pagination
+  const [filter, setFilter] = useState(""); // State to store filter input
   const recordsPerPage = 10; // Number of records per page
 
   // Fetch crop prices from the API
@@ -65,8 +66,15 @@ const FarmerDashboard = () => {
     return () => clearInterval(interval); // Clean up the interval on component unmount
   }, []);
 
+  // Get the filtered crop prices (with pagination applied)
+  const filteredData = allCropPrices.filter(
+    (priceData) =>
+      priceData.crop.toLowerCase().includes(filter.toLowerCase()) ||
+      priceData.market.toLowerCase().includes(filter.toLowerCase())
+  );
+
   // Get the crop prices for the current page
-  const currentData = allCropPrices.slice(
+  const currentData = filteredData.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
   );
@@ -83,6 +91,11 @@ const FarmerDashboard = () => {
     }
   };
 
+  const handleFilterChange = (e) => {
+    setFilter(e.target.value);
+    setCurrentPage(1); // Reset to the first page when filter changes
+  };
+
   if (loading) {
     return <div>Loading real-time crop prices...</div>;
   }
@@ -96,6 +109,16 @@ const FarmerDashboard = () => {
       {/* ✅ Real-Time Date and Time */}
       <div className="current-datetime">
         <h4>Current Date & Time: {currentDateTime}</h4>
+      </div>
+
+      {/* ✅ Filter Section */}
+      <div className="filter-section">
+        <input
+          type="text"
+          value={filter}
+          onChange={handleFilterChange}
+          placeholder="Search by crop or market..."
+        />
       </div>
 
       {/* ✅ Real-Time Price Discovery Section */}
@@ -117,7 +140,7 @@ const FarmerDashboard = () => {
                 <td>{priceData.crop}</td>
                 <td>₹ {priceData.price}</td>
                 <td>{priceData.market}</td>
-                <td>{priceData.date}</td>
+                <td>{currentDateTime}</td>
               </tr>
             ))}
           </tbody>
@@ -127,9 +150,12 @@ const FarmerDashboard = () => {
             Previous
           </button>
           <span>
-            Page {currentPage} of {totalPages}
+            Page {currentPage} of {Math.ceil(filteredData.length / recordsPerPage)}
           </span>
-          <button onClick={handleNextPage} disabled={currentPage === totalPages}>
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === Math.ceil(filteredData.length / recordsPerPage)}
+          >
             Next
           </button>
         </div>
