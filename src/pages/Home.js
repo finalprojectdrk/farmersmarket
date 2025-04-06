@@ -19,13 +19,13 @@ const Home = () => {
 
       {/* Features Section */}
       <section className="features">
-         <Link to="/register>
+         <Link to="/register">
         <div className="feature-card">
           <img src={farmerIcon} alt="Farmer" />
           <h3>For Farmers</h3>
           <p>Get real-time price updates & sell your produce efficiently.</p>
         </div></link>
-        <Link to="/register>
+        <Link to="/register">
         <div className="feature-card">
           <img src={buyerIcon} alt="Buyer" />
           <h3>For Buyers</h3>
