@@ -27,7 +27,7 @@ const Home = () => {
           <img src={farmerIcon} alt="Farmer" />
           <h3>For Farmers</h3>
           <p>Get real-time price updates & sell your produce efficiently.</p>
-        </link>
+       </Link>
         
         <div className="feature-card">
           <img src={buyerIcon} alt="Buyer" />
