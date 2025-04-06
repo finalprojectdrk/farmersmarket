@@ -34,7 +34,7 @@ const Home = () => {
           <h3>For Buyers</h3>
           <p>Search & order fresh produce directly from farmers.</p>
         </div>
-        <div className="feature-card" onClick={goToRegister}>
+        <div className="feature-card">
           <img src={marketIcon} alt="Marketplace" />
           <h3>Marketplace</h3>
           <p>Experience a transparent & fair supply chain system.</p>
