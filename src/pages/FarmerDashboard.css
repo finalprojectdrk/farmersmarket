@@ -177,6 +177,24 @@
       max-width: 100%;
       font-size: 20px;
   }
+
+  /* Make the crop prices table responsive */
+  .price-section table {
+    width: 100%;
+    overflow-x: auto;
+    display: block;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .price-section th,
+  .price-section td {
+    font-size: 14px;
+    padding: 8px;
+  }
+
+  .price-section h3 {
+    font-size: 18px;
+  }
 }
 
 /* 📚 Farmer Resources Section */
@@ -244,9 +262,18 @@
   line-height: 1.4;
 }
 
-/* 📱 Responsive Design */
+/* 📱 Responsive Design for Resources Section */
 @media (max-width: 768px) {
   .resources-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Sticky table headers */
+.price-section th {
+  position: sticky;
+  top: 0;
+  background-color: #2e7d32;
+  color: white;
+  z-index: 1;
 }
