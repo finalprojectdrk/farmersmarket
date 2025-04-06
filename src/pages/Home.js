@@ -23,13 +23,13 @@ const Home = () => {
 
       {/* Features Section */}
       <section className="features">
-           <div className="feature-card" onClick={goToRegister}>
+           <Link to="/registers"  className="feature-card" >
           <img src={farmerIcon} alt="Farmer" />
           <h3>For Farmers</h3>
           <p>Get real-time price updates & sell your produce efficiently.</p>
-        </div>
+        </link>
         
-        <div className="feature-card" onClick={goToRegister}>
+        <div className="feature-card">
           <img src={buyerIcon} alt="Buyer" />
           <h3>For Buyers</h3>
           <p>Search & order fresh produce directly from farmers.</p>
