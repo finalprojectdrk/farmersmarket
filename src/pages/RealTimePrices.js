@@ -3,37 +3,38 @@ import ProductList from "../components/ProductList";
 import "./FarmerDashboard.css"; // Import CSS for styling
 
 const FarmerDashboard = () => {
-  // State to hold crop prices
-  const [cropPrices, setCropPrices] = useState({});
+  const [cropPrices, setCropPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch Tamil Nadu Government's real-time crop prices from API
+  // Fetch crop prices from the API provided
   useEffect(() => {
     const fetchCropPrices = async () => {
       try {
-        const url = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000017704f08e67e4414747189afb9ef2d662&format=json&offset=0&limit=4000";
-
+        // API URL with your API key and other parameters
+        const url =
+          "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000017704f08e67e4414747189afb9ef2d662&format=json&offset=0&limit=4000";
+        
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error("Failed to fetch crop prices");
         }
+
         const data = await response.json();
 
-        // Log the response data to check the structure
-        console.log(data);
+        // Assuming that the crop prices are inside the "records" field in the response
+        const records = data.records;
 
-        // Assuming data records contain fields like 'commodity' and 'market_price'
-        const cropData = data.records.reduce((acc, record) => {
-          const cropName = record.commodity;  // Modify according to actual field names
-          const price = record.market_price;  // Modify according to actual field names
-          if (cropName && price) {
-            acc[cropName] = price;
-          }
-          return acc;
-        }, {});
+        // Map over the records and extract relevant information
+        const formattedData = records.map((record) => ({
+          crop: record.commodity,
+          price: record.modal_price,
+          market: record.market,
+          date: record.date,
+        }));
 
-        setCropPrices(cropData);
+        // Set the fetched and formatted data into the state
+        setCropPrices(formattedData);
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -43,13 +44,12 @@ const FarmerDashboard = () => {
 
     fetchCropPrices();
 
-    // Optionally: Refresh the data every 5 seconds (you can adjust the interval)
+    // Optional: Refresh every 5 seconds
     const interval = setInterval(fetchCropPrices, 5000);
 
-    return () => clearInterval(interval); // Clean up the interval when component unmounts
-  }, []); // Empty dependency array means this effect runs once on component mount
+    return () => clearInterval(interval); // Clean up the interval on component unmount
+  }, []); // Empty dependency array ensures this effect runs only once
 
-  // Render loading state or error
   if (loading) {
     return <div>Loading real-time crop prices...</div>;
   }
@@ -68,13 +68,18 @@ const FarmerDashboard = () => {
             <tr>
               <th>Crop</th>
               <th>Market Price (₹/Quintal)</th>
+              <th>Market</th>
+              <th>Date</th>
             </tr>
           </thead>
           <tbody>
-            {Object.entries(cropPrices).map(([crop, price]) => (
-              <tr key={crop}>
-                <td>{crop.charAt(0).toUpperCase() + crop.slice(1)}</td>
-                <td>₹ {price}</td>
+            {/* Map over cropPrices data and display each crop */}
+            {cropPrices.map((priceData, index) => (
+              <tr key={index}>
+                <td>{priceData.crop}</td>
+                <td>₹ {priceData.price}</td>
+                <td>{priceData.market}</td>
+                <td>{priceData.date}</td>
               </tr>
             ))}
           </tbody>
