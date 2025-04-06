@@ -13,7 +13,7 @@ const FarmerDashboard = () => {
       try {
         // API URL with your API key and other parameters
         const url =
-          "https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24&format=json&offset=0&limit=4000";
+          "https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24?api-key=579b464db66ec23bdd0000015bb8ec5533b14f41517cdfc7abe678bf&format=json&offset=0&limit=4000";
         
         const response = await fetch(url);
         if (!response.ok) {
