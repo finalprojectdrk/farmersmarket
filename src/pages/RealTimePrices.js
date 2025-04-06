@@ -12,8 +12,7 @@ const FarmerDashboard = () => {
     const fetchCropPrices = async () => {
       try {
         // API URL with your API key and other parameters
-        const url =
-          "https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24?api-key=579b464db66ec23bdd0000015bb8ec5533b14f41517cdfc7abe678bf&format=json&offset=0&limit=4000";
+        const url ="https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000017704f08e67e4414747189afb9ef2d662&format=json&offset=0&limit=4000";
         
         const response = await fetch(url);
         if (!response.ok) {
