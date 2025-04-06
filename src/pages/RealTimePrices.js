@@ -6,6 +6,7 @@ const FarmerDashboard = () => {
   const [cropPrices, setCropPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentDateTime, setCurrentDateTime] = useState("");
 
   // Fetch crop prices from the API provided
   useEffect(() => {
@@ -25,13 +26,21 @@ const FarmerDashboard = () => {
         // Assuming that the crop prices are inside the "records" field in the response
         const records = data.records;
 
-        // Map over the records and extract relevant information
-        const formattedData = records.map((record) => ({
-          crop: record.commodity,
-          price: record.modal_price,
-          market: record.market,
-          date: record.date,
-        }));
+        // Map over the records and extract relevant information, performing calculations
+        const formattedData = records.map((record) => {
+          // Convert price from ₹/quintal to ₹/kg (multiply by 100)
+          const priceInKg = parseFloat(record.modal_price) / 100;
+
+          // Format the date to a more readable format (e.g., DD/MM/YYYY)
+          const formattedDate = new Date(record.date).toLocaleDateString("en-IN");
+
+          return {
+            crop: record.commodity,
+            price: priceInKg.toFixed(2), // rounded to two decimal places (₹/kg)
+            market: record.market,
+            date: formattedDate,
+          };
+        });
 
         // Set the fetched and formatted data into the state
         setCropPrices(formattedData);
@@ -50,6 +59,20 @@ const FarmerDashboard = () => {
     return () => clearInterval(interval); // Clean up the interval on component unmount
   }, []); // Empty dependency array ensures this effect runs only once
 
+  // Update current date and time every second
+  useEffect(() => {
+    const updateDateTime = () => {
+      const currentDate = new Date();
+      const formattedDate = currentDate.toLocaleString(); // You can customize the format as needed
+      setCurrentDateTime(formattedDate);
+    };
+
+    updateDateTime(); // Set initial date and time
+    const interval = setInterval(updateDateTime, 1000); // Update every second
+
+    return () => clearInterval(interval); // Clean up the interval on component unmount
+  }, []);
+
   if (loading) {
     return <div>Loading real-time crop prices...</div>;
   }
@@ -58,7 +81,7 @@ const FarmerDashboard = () => {
     return <div>Error: {error}</div>;
   }
 
-    return (
+  return (
     <div className="dashboard-container">
       {/* ✅ Real-Time Date and Time */}
       <div className="current-datetime">
@@ -74,7 +97,7 @@ const FarmerDashboard = () => {
               <th>Crop</th>
               <th>Market Price (₹/kg)</th>
               <th>Market</th>
-              <th>Date & Time</th> {/* Updated header */}
+              <th>Date</th> {/* Updated header */}
             </tr>
           </thead>
           <tbody>
@@ -84,7 +107,7 @@ const FarmerDashboard = () => {
                 <td>{priceData.crop}</td>
                 <td>₹ {priceData.price}</td>
                 <td>{priceData.market}</td>
-                <td>{currentDateTime}</td> {/* Display current date and time in each row */}
+                <td>{priceData.date}</td> {/* Display formatted date */}
               </tr>
             ))}
           </tbody>
