@@ -6,14 +6,7 @@ import bgImage from "../images/marketplace-bg.jpg";
 import farmerIcon from "../images/farmer-icon.png";
 import buyerIcon from "../images/buyer-icon.png";
 import marketIcon from "../images/marketplace2.png";
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
-function Features() {
-  const navigate = useNavigate(); // Initialize useNavigate hook
-
-  const goToRegister = () => {
-    navigate('/registers'); // Navigate to the /registers page
-  };
 
 const Home = () => {
   return (
