@@ -6,6 +6,7 @@ import bgImage from "../images/marketplace-bg.jpg";
 import farmerIcon from "../images/farmer-icon.png";
 import buyerIcon from "../images/buyer-icon.png";
 import marketIcon from "../images/marketplace2.png";
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const Home = () => {
   return (
@@ -17,21 +18,28 @@ const Home = () => {
         <Link to="/register" className="cta-button">Get Started</Link>
       </section>
 
+
+function Features() {
+  const navigate = useNavigate(); // Initialize useNavigate hook
+
+  const goToRegister = () => {
+    navigate('/registers'); // Navigate to the /registers page
+  };
+
       {/* Features Section */}
       <section className="features">
-         <Link to="/register">
-        <div className="feature-card">
+           <div className="feature-card" onClick={goToRegister}>
           <img src={farmerIcon} alt="Farmer" />
           <h3>For Farmers</h3>
           <p>Get real-time price updates & sell your produce efficiently.</p>
-        </div></link>
+        </div>
         <Link to="/register">
-        <div className="feature-card">
+        <div className="feature-card" onClick={goToRegister}>
           <img src={buyerIcon} alt="Buyer" />
           <h3>For Buyers</h3>
           <p>Search & order fresh produce directly from farmers.</p>
-        </div></link>
-        <div className="feature-card">
+        </div>
+        <div className="feature-card" onClick={goToRegister}>
           <img src={marketIcon} alt="Marketplace" />
           <h3>Marketplace</h3>
           <p>Experience a transparent & fair supply chain system.</p>
