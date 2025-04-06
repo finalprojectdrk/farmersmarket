@@ -103,7 +103,7 @@ const FarmerDashboard = () => {
               <th>Crop</th>
               <th>Market Price (₹/kg)</th>
               <th>Market</th>
-              <th>Date</th> {/* Updated header */}
+              <th>Till Date/Time</th> {/* Updated header */}
             </tr>
           </thead>
           <tbody>
@@ -113,7 +113,7 @@ const FarmerDashboard = () => {
                 <td>{priceData.crop}</td>
                 <td>₹ {priceData.price}</td>
                 <td>{priceData.market}</td>
-                <td>{priceData.date}</td> {/* Display formatted date */}
+                <td>{currentDateTime}</td> {/* Display formatted date */}
               </tr>
             ))}
           </tbody>
