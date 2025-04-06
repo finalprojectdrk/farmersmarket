@@ -58,8 +58,13 @@ const FarmerDashboard = () => {
     return <div>Error: {error}</div>;
   }
 
-  return (
+    return (
     <div className="dashboard-container">
+      {/* ✅ Real-Time Date and Time */}
+      <div className="current-datetime">
+        <h4>Current Date & Time: {currentDateTime}</h4>
+      </div>
+
       {/* ✅ Real-Time Price Discovery Section */}
       <div className="price-section card">
         <h3>🌾 Real-Time Crop Prices</h3>
@@ -67,9 +72,9 @@ const FarmerDashboard = () => {
           <thead>
             <tr>
               <th>Crop</th>
-              <th>Market Price (₹/Quintal)</th>
+              <th>Market Price (₹/kg)</th>
               <th>Market</th>
-              <th>Date</th>
+              <th>Date & Time</th> {/* Updated header */}
             </tr>
           </thead>
           <tbody>
@@ -79,7 +84,7 @@ const FarmerDashboard = () => {
                 <td>{priceData.crop}</td>
                 <td>₹ {priceData.price}</td>
                 <td>{priceData.market}</td>
-                <td>{priceData.date}</td>
+                <td>{currentDateTime}</td> {/* Display current date and time in each row */}
               </tr>
             ))}
           </tbody>
