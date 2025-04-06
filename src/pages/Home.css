@@ -39,6 +39,64 @@
 }
 
 /* Features Section */
+
+/* Features Section */
+.features {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+  margin: 40px 0;
+}
+
+.feature-card {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  width: 250px;
+}
+
+.feature-card img {
+  width: 90px;
+  height: 90px;
+}
+
+.feature-card:hover {
+  background: #beebc2;
+  transform: scale(1.05);
+}
+
+/* Media Queries for responsiveness */
+
+/* For tablets and smaller devices */
+@media (max-width: 768px) {
+  .features {
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center the items */
+    gap: 30px;
+  }
+
+  .feature-card {
+    width: 90%; /* Make feature cards responsive */
+    max-width: 300px; /* Limit the max width */
+  }
+}
+
+/* For mobile devices */
+@media (max-width: 480px) {
+  .features {
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center the items */
+    gap: 20px;
+  }
+
+  .feature-card {
+    width: 90%; /* Make feature cards responsive */
+    max-width: 280px; /* Limit the max width */
+  }
+}
+
 .features {
   display: flex;
   justify-content: center;
