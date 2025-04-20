@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone } from "react-icons/fa"; // Import icons
+import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone } from "react-icons/fa";
 import "./Auth.css";
-import * as sms from '../utils/sms';
-
-
+import * as sms from "../utils/sms"; // Make sure this path is correct
 
 const Register = () => {
   const [user, setUser] = useState({
@@ -27,7 +25,7 @@ const Register = () => {
     }
   }, [navigate]);
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     const { name, email, password, role, location, phone } = user;
 
@@ -52,20 +50,21 @@ const Register = () => {
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("userType", role);
     localStorage.setItem("userEmail", email);
-    localStorage.setItem("phonenumber",phone)
+    localStorage.setItem("phonenumber", phone);
 
     alert("Registration successful! Redirecting...");
 
-    sms.sendSMS('+917010039023', 'Your order was successful. Thank you for buying!');
+    // ✅ Send SMS to the registered user
+    const cleanedPhone = phone.startsWith("+91") ? phone.slice(3) : phone;
+
+    await sms.sendSMS(
+      cleanedPhone,
+      `Hi ${name}, registration was successful! Welcome to Farmers Market.`
+    );
 
     setTimeout(() => {
       navigate("/user-selection");
     }, 500);
-    return;
-   
-    
-
-
   };
 
   return (
@@ -143,8 +142,6 @@ const Register = () => {
       </p>
     </div>
   );
-
-
 };
 
 export default Register;
