@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs16.x",
+      "includeFiles": [
+        "node_modules/axios/**"
+      ]
+    }
+  }
+}
