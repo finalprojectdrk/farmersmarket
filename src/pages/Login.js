@@ -34,7 +34,7 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("userType", validUser.role);
     localStorage.setItem("userEmail", validUser.email);
-    localStorage.setItem('phonenum',validUser.phone)
+    localStorage.setItem("phonenumber", phone);
 
     setIsLoggedIn(true);
     setUserType(validUser.role);
@@ -45,7 +45,18 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
       navigate("/user-selection");
     }, 500);
   };
+ // ✅ Send SMS to the registered user
+    const cleanedPhone = phone.startsWith("+91") ? phone.slice(3) : phone;
 
+    await sms.sendSMS(
+      cleanedPhone,
+      `Hi ${name}, registration was successful! Welcome to Farmers Market.`
+    );
+
+    setTimeout(() => {
+      navigate("/user-selection");
+    }, 500);
+  };
   return (
     <div className="auth-container">
       <h2>Login</h2>
