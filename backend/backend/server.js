@@ -7,10 +7,17 @@ dotenv.config();
 
 const app = express();
 
-// ✅ CORS: Allow only frontend domain
-app.use(cors({
-  origin: "https://farmerssmarket.com"
-}));
+// ✅ CORS Configuration
+app.use(
+  cors({
+    origin: "https://farmerssmarket.com", // Allow only the frontend domain
+    methods: ["GET", "POST"], // Allow only GET and POST methods
+    allowedHeaders: ["Content-Type"], // Allow Content-Type header
+  })
+);
+
+// ✅ Enable preflight OPTIONS requests for CORS (handle preflight request)
+app.options("*", cors());  // Allow OPTIONS requests for all routes
 
 app.use(express.json());
 
