@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone } from "react-icons/fa";
+import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone } from "react-icons/fa"; // Import icons
 import "./Auth.css";
-import * as sms from '../utils/sms'; // Optional: this logs SMS in console
+import * as sms from '../utils/sms';
+
+
 
 const Register = () => {
   const [user, setUser] = useState({
@@ -26,7 +27,7 @@ const Register = () => {
     }
   }, [navigate]);
 
-  const handleRegister = async (e) => {
+  const handleRegister = (e) => {
     e.preventDefault();
     const { name, email, password, role, location, phone } = user;
 
@@ -35,38 +36,36 @@ const Register = () => {
       return;
     }
 
-    try {
-      const res = await axios.post("http://localhost:5000/api/register", {
-        name,
-        email,
-        password,
-        role,
-        location,
-        phone,
-      });
+    const storedUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const existingUser = storedUsers.find((u) => u.email === email);
 
-      alert(res.data.message);
-
-      // Simulate login
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userType", role);
-      localStorage.setItem("userEmail", email);
-      localStorage.setItem("phonenumber", phone);
-
-      // Optional SMS
-      sms.sendSMS(phone, 'Your order was successful. Thank you for buying!');
-
-      setTimeout(() => {
-        navigate("/user-selection");
-      }, 500);
-
-    } catch (err) {
-      const message = err.response?.data?.message || "Registration failed. Try again.";
-      alert(message);
-      if (err.response?.status === 400) {
-        navigate("/login");
-      }
+    if (existingUser) {
+      alert("Email already registered.");
+      navigate("/login");
+      return;
     }
+
+    const newUser = { name, email, password, role, location, phone };
+    storedUsers.push(newUser);
+    localStorage.setItem("users", JSON.stringify(storedUsers));
+
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("userType", role);
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("phonenumber",phone)
+
+    alert("Registration successful! Redirecting...");
+
+    sms.sendSMS('+917010039023', 'Your order was successful. Thank you for buying!');
+
+    setTimeout(() => {
+      navigate("/user-selection");
+    }, 500);
+    return;
+   
+    
+
+
   };
 
   return (
@@ -144,6 +143,8 @@ const Register = () => {
       </p>
     </div>
   );
+
+
 };
 
 export default Register;
