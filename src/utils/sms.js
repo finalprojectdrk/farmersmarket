@@ -4,10 +4,10 @@ import axios from 'axios';
 export const sendSMS = async (phone, message) => {
   try {
     const response = await axios.post(
-      'https://farmerssmarket.com/api/sms', // ✅ Replace with your deployed Vercel domain
+      'http://localhost:5000/api/sms',
       {
-        phone,
-        message,
+        phoneNumber: phone, // ✅ Fix here
+        message: message,
       },
       {
         headers: {
