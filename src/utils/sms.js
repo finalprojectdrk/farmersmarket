@@ -1,18 +1,13 @@
+import axios from "axios";
+
 export const sendSMS = async (phone, message) => {
   try {
-    const res = await fetch('http://localhost:8000/src/send-sms/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, message }),
+    const res = await axios.post("https://api.farmerssmarket.com/api/sms", {
+      phone,
+      message,
     });
-
-    const data = await res.json();
-    if (data.status === 'success') {
-      alert('SMS sent!');
-    } else {
-      alert('Failed to send SMS');
-    }
+    console.log("SMS response:", res.data);
   } catch (err) {
-    console.error('Error sending SMS:', err);
+    console.error("SMS Error:", err);
   }
 };
