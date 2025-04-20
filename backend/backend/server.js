@@ -7,22 +7,40 @@ dotenv.config();
 
 const app = express();
 
+// ✅ Load environment variables
+const PORT = process.env.PORT || 5000;
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:3000";
+
+// ✅ Middleware
+app.use(express.json());
+
 // ✅ CORS Configuration
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://farmerssmarket.com"
+];
+
 app.use(
   cors({
-    origin: "https://farmerssmarket.com", // Allow only the frontend domain
-    methods: ["GET", "POST"], // Allow only GET and POST methods
-    allowedHeaders: ["Content-Type"], // Allow Content-Type header
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
   })
 );
 
-// ✅ Enable preflight OPTIONS requests for CORS (handle preflight request)
-app.options("*", cors());  // Allow OPTIONS requests for all routes
 
-app.use(express.json());
+// ✅ Preflight support (for OPTIONS)
+app.options("*", cors());
 
-// API routes
+// ✅ API Routes
 app.use("/api", smsRoutes);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// ✅ Start server
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+});
