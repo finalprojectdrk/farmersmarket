@@ -2,7 +2,7 @@
   "name": "farmers-market",
   "version": "0.1.0",
   "private": true,
-  "devdependencies": {
+  "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
