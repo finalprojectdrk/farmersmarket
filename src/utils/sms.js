@@ -4,7 +4,7 @@ import axios from 'axios';
 export const sendSMS = async (phone, message) => {
   try {
     const response = await axios.post(
-      'http://localhost:5000/api/sms',
+      'https://farmerssmarket.com/api/sms',
       {
         phoneNumber: phone, // ✅ Fix here
         message: message,
