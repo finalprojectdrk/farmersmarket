@@ -50,7 +50,7 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
 
     await sms.sendSMS(
       cleanedPhone,
-      `Hi ${name}, registration was successful! Welcome to Farmers Market.`
+      `Hi ${name}, Logged in Successfully! Welcome to Farmers Market. Enjoy Shopping`
     );
 
     setTimeout(() => {
