@@ -19,6 +19,7 @@ import AddProduct from "./pages/AddProduct"; // ✅ Imported AddProduct Page
 import SupplyChain from "./pages/SupplyChain";
 import RealTimePrices from "./pages/RealTimePrices";
 import Transactions from "./pages/Transactions";
+import axios from 'axios';
 
 // Private Route Wrapper
 const PrivateRoute = ({ element, isLoggedIn }) => {
