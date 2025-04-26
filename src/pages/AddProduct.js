@@ -6,6 +6,8 @@ const AddProduct = () => {
     name: "",
     price: "",
     quantity: "",
+    status: "Pending", // Default status for new products
+    transport: "", // Transport details for supply chain
   });
 
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ const AddProduct = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!product.name || !product.price || !product.quantity) {
+    if (!product.name || !product.price || !product.quantity || !product.transport) {
       alert("Please fill in all fields!");
       return;
     }
@@ -36,9 +38,42 @@ const AddProduct = () => {
     <div style={styles.container}>
       <h2 style={styles.heading}>Add Product</h2>
       <form onSubmit={handleSubmit} style={styles.form}>
-        <input type="text" name="name" placeholder="Crop Name" value={product.name} onChange={handleChange} required style={styles.input} />
-        <input type="number" name="price" placeholder="Price per kg" value={product.price} onChange={handleChange} required style={styles.input} />
-        <input type="number" name="quantity" placeholder="Quantity (kg)" value={product.quantity} onChange={handleChange} required style={styles.input} />
+        <input
+          type="text"
+          name="name"
+          placeholder="Crop Name"
+          value={product.name}
+          onChange={handleChange}
+          required
+          style={styles.input}
+        />
+        <input
+          type="number"
+          name="price"
+          placeholder="Price per kg"
+          value={product.price}
+          onChange={handleChange}
+          required
+          style={styles.input}
+        />
+        <input
+          type="number"
+          name="quantity"
+          placeholder="Quantity (kg)"
+          value={product.quantity}
+          onChange={handleChange}
+          required
+          style={styles.input}
+        />
+        <input
+          type="text"
+          name="transport"
+          placeholder="Transport Details (e.g., Truck - TN 45 AB 6789)"
+          value={product.transport}
+          onChange={handleChange}
+          required
+          style={styles.input}
+        />
         <button type="submit" style={styles.button}>Add Product</button>
       </form>
     </div>
