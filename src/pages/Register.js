@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone } from "react-icons/fa";
 import "./Auth.css";
-import * as sms from "../utils/sms";  // Ensure this path is correct
-import { sendEmail } from '../utils/email';  // Import the sendEmail function
+import { sendSMS } from "../utils/sms";
+import { sendEmail } from "../utils/email"; // Make sure this path is correct
+import { toast } from "react-toastify"; // Install react-toastify if you haven't
 
 const Register = () => {
   const [user, setUser] = useState({
@@ -30,8 +31,14 @@ const Register = () => {
     e.preventDefault();
     const { name, email, password, role, location, phone } = user;
 
+    // Basic validations
     if (!name || !email || !password || !location || !phone) {
-      alert("Please fill in all fields.");
+      toast.error("Please fill in all fields.");
+      return;
+    }
+
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      toast.error("Please enter a valid 10-digit Indian phone number.");
       return;
     }
 
@@ -39,7 +46,7 @@ const Register = () => {
     const existingUser = storedUsers.find((u) => u.email === email);
 
     if (existingUser) {
-      alert("Email already registered.");
+      toast.error("Email already registered. Please login.");
       navigate("/login");
       return;
     }
@@ -53,21 +60,41 @@ const Register = () => {
     localStorage.setItem("userEmail", email);
     localStorage.setItem("phonenumber", phone);
 
-    alert("Registration successful! Redirecting...");
+    toast.success("Registration successful!");
 
-    // ✅ Send SMS to the registered user
-    const cleanedPhone = phone.startsWith("+91") ? phone.slice(3) : phone;
-    await sms.sendSMS(
-      cleanedPhone,
-      `Hi ${name}, registration was successful! Welcome to Farmers Market.`
-    );
+    // --- Send SMS ---
+    try {
+      let formattedPhone = phone.trim();
+      if (!formattedPhone.startsWith("+91")) {
+        formattedPhone = "+91" + formattedPhone;
+      }
 
-    // ✅ Send Email to the registered user
-    await sendEmail(name, email);
+      await sendSMS(
+        formattedPhone,
+        `Hi ${name}, your registration was successful! Welcome to Farmers Market.`
+      );
+      toast.success("SMS sent successfully!");
+    } catch (smsError) {
+      console.error("SMS sending failed:", smsError);
+      toast.error("SMS failed to send.");
+    }
+
+    // --- Send Email ---
+    try {
+      await sendEmail({
+        to_email: email,
+        to_name: name,
+        message: `Hi ${name},\n\nThank you for registering at Farmers Market!\n\nHappy shopping!`,
+      });
+      toast.success("Email sent successfully!");
+    } catch (emailError) {
+      console.error("Email sending failed:", emailError);
+      toast.error("Email failed to send.");
+    }
 
     setTimeout(() => {
       navigate("/user-selection");
-    }, 500);
+    }, 1000);
   };
 
   return (
