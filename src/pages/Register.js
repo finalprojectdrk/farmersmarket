@@ -4,6 +4,9 @@ import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone } from "react-icons
 import "./Auth.css";
 import * as sms from "../utils/sms";
 import * as email from "../utils/email";
+import { auth, db } from "../firebase";  // 👈 import Firebase
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore"; // 👈 Firestore for saving user details
 
 const Register = () => {
   const [user, setUser] = useState({
@@ -36,40 +39,41 @@ const Register = () => {
       return;
     }
 
-    const storedUsers = JSON.parse(localStorage.getItem("users")) || [];
-    const existingUser = storedUsers.find((u) => u.email === userEmail);
-
-    if (existingUser) {
-      alert("Email already registered.");
-      navigate("/login");
-      return;
-    }
-
-    const newUser = { name, email: userEmail, password, role, location, phone };
-    storedUsers.push(newUser);
-    localStorage.setItem("users", JSON.stringify(storedUsers));
-
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("userType", role);
-    localStorage.setItem("userEmail", userEmail);
-    localStorage.setItem("phonenumber", phone);
-
     setLoading(true);
 
     try {
+      // ✅ Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, userEmail, password);
+      const registeredUser = userCredential.user;
+
+      // ✅ Save additional info to Firestore Database
+      await setDoc(doc(db, "users", registeredUser.uid), {
+        uid: registeredUser.uid,
+        name,
+        email: userEmail,
+        role,
+        location,
+        phone,
+      });
+
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("userType", role);
+      localStorage.setItem("userEmail", userEmail);
+      localStorage.setItem("phonenumber", phone);
+
       const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
 
       // ✅ Send SMS
       await sms.sendSMS(
         formattedPhone,
-        `Hi ${name}, registration was successful! Welcome to Farmers Market.`
+        `Hi ${name}, registration successful! Welcome to Farmers Market.`
       );
 
       // ✅ Send Email
       await email.sendEmail(
         name,
         userEmail,
-        `Hi ${name},\n\nThank you for registering at Farmers Market! We're happy to have you onboard. 🌾`
+        `Hi ${name},\n\nThank you for registering at Farmers Market! 🌾`
       );
 
       alert("Registration successful! Redirecting...");
@@ -78,8 +82,8 @@ const Register = () => {
       }, 500);
 
     } catch (error) {
-      alert("Something went wrong while sending SMS/Email. Please try again.");
-      console.error(error);
+      console.error("Registration Error:", error);
+      alert(error.message || "Registration failed!");
     } finally {
       setLoading(false);
     }
