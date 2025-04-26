@@ -8,12 +8,34 @@ import buyerIcon from "../images/buyer-icon.png";
 import marketIcon from "../images/marketplace2.png";
 
 const Home = () => {
-  // Initialize useNavigate hook
   const navigate = useNavigate();
 
-  // Function to navigate to the register page
-  const navigateToRegister = () => {
-    navigate("/register");
+  // Fetch logged-in user from localStorage
+  const user = JSON.parse(localStorage.getItem("user")); 
+  // user example: { id: 123, role: 'farmer' } or { id: 456, role: 'buyer' }
+
+  const handleFarmerClick = () => {
+    if (user?.role === "farmer") {
+      navigate("/farmer-dashboard");
+    } else if (user) {
+      alert("Access Denied: Only Farmers can access this section.");
+    } else {
+      navigate("/register");
+    }
+  };
+
+  const handleBuyerClick = () => {
+    if (user?.role === "buyer") {
+      navigate("/buyer-dashboard");
+    } else if (user) {
+      alert("Access Denied: Only Buyers can access this section.");
+    } else {
+      navigate("/register");
+    }
+  };
+
+  const handleMarketplaceClick = () => {
+    navigate("/marketplace");
   };
 
   return (
@@ -22,26 +44,26 @@ const Home = () => {
       <section className="hero" style={{ backgroundImage: `url(${bgImage})` }}>
         <h1>Welcome to FarmTrek</h1>
         <p>Connecting Farmers & Buyers for a better marketplace</p>
-        <button className="cta-button" onClick={navigateToRegister}>
+        <button className="cta-button" onClick={() => navigate("/register")}>
           Get Started
         </button>
       </section>
 
       {/* Features Section */}
       <section className="features">
-        <div className="feature-card" onClick={navigateToRegister}>
+        <div className="feature-card" onClick={handleFarmerClick}>
           <img src={farmerIcon} alt="Farmer" />
           <h3>For Farmers</h3>
           <p>Get real-time price updates & sell your produce efficiently.</p>
         </div>
 
-        <div className="feature-card" onClick={navigateToRegister}>
+        <div className="feature-card" onClick={handleBuyerClick}>
           <img src={buyerIcon} alt="Buyer" />
           <h3>For Buyers</h3>
           <p>Search & order fresh produce directly from farmers.</p>
         </div>
 
-        <div className="feature-card" onClick={navigateToRegister}>
+        <div className="feature-card" onClick={handleMarketplaceClick}>
           <img src={marketIcon} alt="Marketplace" />
           <h3>Marketplace</h3>
           <p>Experience a transparent & fair supply chain system.</p>
