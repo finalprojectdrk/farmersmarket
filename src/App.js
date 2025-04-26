@@ -1,8 +1,9 @@
+// src/App.js
+
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-
 import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -15,13 +16,12 @@ import Orders from "./pages/Orders";
 import Checkout from "./pages/Checkout";
 import BuyerProfile from "./pages/BuyerProfile";
 import FarmerProfile from "./pages/FarmerProfile";
-import AddProduct from "./pages/AddProduct"; // ✅ Imported AddProduct Page
+import AddProduct from "./pages/AddProduct";
 import SupplyChain from "./pages/SupplyChain";
 import RealTimePrices from "./pages/RealTimePrices";
 import Transactions from "./pages/Transactions";
-import axios from 'axios';
 
-// Private Route Wrapper
+// 🔥 Private Route Wrapper
 const PrivateRoute = ({ element, isLoggedIn }) => {
   return isLoggedIn ? element : <Navigate to="/login" />;
 };
@@ -51,28 +51,28 @@ const App = () => {
     <Router>
       <Navbar isLoggedIn={isLoggedIn} userType={userType} handleLogout={handleLogout} />
       <Routes>
-        {/* Public Routes */}
+
+        {/* --- Public Routes --- */}
         <Route path="/" element={<Home />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} setUserType={setUserType} />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Protected Route - User Selection */}
+        {/* --- Private Route (Logged in users only) --- */}
         <Route path="/user-selection" element={<PrivateRoute element={<UserSelection setUserType={setUserType} />} isLoggedIn={isLoggedIn} />} />
 
-        {/* Protected Routes for Farmers */}
+        {/* --- Farmer Routes --- */}
         {userType === "farmer" && (
           <>
             <Route path="/farmer-dashboard" element={<PrivateRoute element={<FarmerDashboard />} isLoggedIn={isLoggedIn} />} />
-            
             <Route path="/farmer-profile" element={<PrivateRoute element={<FarmerProfile />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/add-product" element={<PrivateRoute element={<AddProduct />} isLoggedIn={isLoggedIn} />} /> {/* ✅ Added Route */}
-            <Route path="/supply-chain" element={<SupplyChain element={<SupplyChain />} isLoggedIn={isLoggedIn} />} /> {/* ✅ Add this */}
-            <Route path="/real-time-prices" element={<RealTimePrices element={<RealTimePrices />} isLoggedIn={isLoggedIn} />} />
+            <Route path="/add-product" element={<PrivateRoute element={<AddProduct />} isLoggedIn={isLoggedIn} />} />
+            <Route path="/supply-chain" element={<PrivateRoute element={<SupplyChain />} isLoggedIn={isLoggedIn} />} />
+            <Route path="/real-time-prices" element={<PrivateRoute element={<RealTimePrices />} isLoggedIn={isLoggedIn} />} />
           </>
         )}
 
-        {/* Protected Routes for Buyers */}
+        {/* --- Buyer Routes --- */}
         {userType === "buyer" && (
           <>
             <Route path="/buyer-dashboard" element={<PrivateRoute element={<BuyerDashboard />} isLoggedIn={isLoggedIn} />} />
@@ -81,11 +81,11 @@ const App = () => {
             <Route path="/orders" element={<PrivateRoute element={<Orders />} isLoggedIn={isLoggedIn} />} />
             <Route path="/checkout" element={<PrivateRoute element={<Checkout />} isLoggedIn={isLoggedIn} />} />
             <Route path="/buyer-profile" element={<PrivateRoute element={<BuyerProfile />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/transactions"  element={<PrivateRoute element={<Transactions />} isLoggedIn={isLoggedIn} />} />
+            <Route path="/transactions" element={<PrivateRoute element={<Transactions />} isLoggedIn={isLoggedIn} />} />
           </>
         )}
 
-        {/* Redirect unknown routes to Home */}
+        {/* --- Redirect all unknown paths to Home --- */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
