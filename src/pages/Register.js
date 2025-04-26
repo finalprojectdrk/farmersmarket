@@ -136,15 +136,18 @@ const Register = () => {
               />
             </div>
 
-            <div className="input-group">
+          <div className="input-group">
               <FaLock className="icon" />
               <input
-                type="password"
+                type={passwordVisible ? "text" : "password"}  // Dynamically toggle password visibility
                 placeholder="Password"
                 value={user.password}
                 onChange={(e) => setUser({ ...user, password: e.target.value })}
                 required
               />
+              <span className="eye-icon" onClick={togglePasswordVisibility}>
+                {passwordVisible ? <FaEyeSlash /> : <FaEye />}
+              </span>
             </div>
 
             <select
