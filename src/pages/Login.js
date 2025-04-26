@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaLock, FaEnvelope } from "react-icons/fa"; // Import icons
+import { FaUser, FaLock, FaEnvelope } from "react-icons/fa";
 import "./Auth.css";
 import { sendSMS } from '../utils/sms';
+import { sendEmail } from '../utils/email'; // import email sending
 
 const Login = ({ setIsLoggedIn, setUserType }) => {
   const [user, setUser] = useState({ email: "", password: "" });
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     const { email, password } = user;
 
@@ -26,24 +27,50 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
     }
 
     if (validUser.password !== password) {
-      alert("Invalid password.");
-      sendSMS('phonenumber', 'Enter Correct Password!');
+      alert("Invalid password!");
+
+      // 🔥 Send SMS alert for wrong password attempt
+      const cleanedPhone = validUser.phone.startsWith("+91") ? validUser.phone : `+91${validUser.phone}`;
+      try {
+        await sendSMS(cleanedPhone, `Someone tried to login with wrong password to your Farmers Market account.`);
+      } catch (error) {
+        console.error("Failed to send wrong password SMS:", error);
+      }
+
       return;
     }
 
+    // ✅ Save login session
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("userType", validUser.role);
     localStorage.setItem("userEmail", validUser.email);
-    localStorage.setItem('phonenum',validUser.phone)
+    localStorage.setItem('phonenumber', validUser.phone);
 
     setIsLoggedIn(true);
     setUserType(validUser.role);
 
-    alert("Login successful! Redirecting...");
-    
+    alert("Login successful! Sending confirmation...");
+
+    try {
+      // 🔥 Send login SMS
+      const cleanedPhone = validUser.phone.startsWith("+91") ? validUser.phone : `+91${validUser.phone}`;
+      await sendSMS(cleanedPhone, `Hi ${validUser.name}, you have successfully logged into Farmers Market.`);
+
+      // 🔥 Send login Email
+      await sendEmail(
+        validUser.email,
+        "Login Successful - Farmers Market",
+        `Hi ${validUser.name},\n\nYou have successfully logged into your account.\n\nIf this wasn't you, please reset your password immediately.\n\nThank you,\nFarmers Market Team`
+      );
+
+      console.log("SMS and Email Sent Successfully!");
+    } catch (error) {
+      console.error("Error sending SMS/Email:", error);
+    }
+
     setTimeout(() => {
       navigate("/user-selection");
-    }, 500);
+    }, 1000);
   };
 
   return (
