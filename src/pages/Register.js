@@ -43,22 +43,23 @@ const Register = () => {
       return;
     }
 
-    const newUser = { name, email, password, role, location, phone };
+    // Ensure phone number starts with +91
+    const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
+
+    const newUser = { name, email, password, role, location, phone: formattedPhone };
     storedUsers.push(newUser);
     localStorage.setItem("users", JSON.stringify(storedUsers));
 
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("userType", role);
     localStorage.setItem("userEmail", email);
-    localStorage.setItem("phonenumber", phone);
+    localStorage.setItem("phonenumber", formattedPhone);
 
     alert("Registration successful! Redirecting...");
 
-    // ✅ Send SMS to the registered user
-    const cleanedPhone = phone.startsWith("+91") ? phone.slice(3) : phone;
-
+    // ✅ Send SMS directly with proper formatted phone number
     await sms.sendSMS(
-      cleanedPhone,
+      formattedPhone,
       `Hi ${name}, registration was successful! Welcome to Farmers Market.`
     );
 
@@ -127,10 +128,19 @@ const Register = () => {
         <div className="input-group">
           <FaPhone className="icon" />
           <input
-            type="text"
-            placeholder="Phone Number"
+            type="tel"
+            pattern="^\+91\d{10}$"
+            title="Phone number must be in +91XXXXXXXXXX format"
+            placeholder="Phone Number (e.g., +9170100XXXXX)"
             value={user.phone}
-            onChange={(e) => setUser({ ...user, phone: e.target.value })}
+            onChange={(e) => {
+              let phoneInput = e.target.value;
+              // Auto add +91 if user types without it
+              if (!phoneInput.startsWith("+91") && phoneInput.length <= 10) {
+                phoneInput = "+91" + phoneInput;
+              }
+              setUser({ ...user, phone: phoneInput });
+            }}
             required
           />
         </div>
