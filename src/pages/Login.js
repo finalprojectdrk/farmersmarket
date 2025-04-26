@@ -6,7 +6,7 @@ import { sendSMS } from '../utils/sms';
 import { sendEmail } from '../utils/email';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../utils/firebase"; // Make sure you have firebase.js set up properly
+import { auth, db } from "../firebase"; // Make sure you have firebase.js set up properly
 
 const Login = ({ setIsLoggedIn, setUserType }) => {
   const [user, setUser] = useState({ email: "", password: "" });
