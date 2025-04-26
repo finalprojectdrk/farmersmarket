@@ -1,4 +1,5 @@
 // /src/utils/sms.js
+
 export const sendSMS = async (phone, message) => {
   try {
     const response = await fetch('https://farmerssmarket.com/api/sms', {
@@ -7,22 +8,22 @@ export const sendSMS = async (phone, message) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        phoneNumber: phone,
+        phoneNumber: phone, // Must match the backend key
         message: message,
       }),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('SMS Send Error:', errorData);
-      throw new Error('Failed to send SMS');
+      console.error('SMS Send Error:', data);
+      throw new Error(data.error || 'Failed to send SMS');
     }
 
-    const data = await response.json();
     console.log('SMS Sent:', data);
     return data;
   } catch (error) {
-    console.error('SMS Send Error:', error.message);
+    console.error('SMS Send Exception:', error.message);
     throw error;
   }
 };
