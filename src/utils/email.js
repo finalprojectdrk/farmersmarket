@@ -19,7 +19,7 @@ export const sendEmail = async (userName, userEmail) => {
   'service_farmers', // <--- your Service ID
 'template_e983pnq', // <--- your Template ID
 templateParams,
-'AUwJcDs3i0NgUbhaf';    // <--- your Public Key (NOT template ID)
+'AUwJcDs3i0NgUbhaf' // <--- your Public Key (NOT template ID)
   );
     console.log("Email sent successfully!");
   } catch (error) {
