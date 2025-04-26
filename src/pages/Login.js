@@ -34,11 +34,11 @@ const Login = () => {
         console.log("User Profile:", userData);
 
         if (userData.role === "buyer") {
-          navigate("/buyer-dashboard");
+          navigate("/buyerdashboard");
         } else if (userData.role === "farmer") {
-          navigate("/farmer-dashboard");
+          navigate("/farmerdashboard");
         } else {
-          navigate("/user-selection"); // fallback
+          navigate("/userselection"); // fallback
         }
 
       } else {
