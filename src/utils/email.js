@@ -1,9 +1,9 @@
 // /src/utils/email.js
 import emailjs from 'emailjs-com';
 
-const SERVICE_ID = 'your_service_id';
-const TEMPLATE_ID = 'your_template_id';
-const PUBLIC_KEY = 'your_public_key';
+const SERVICE_ID = 'service_farmers';    // <--- your Service ID
+const TEMPLATE_ID = 'template_e983pnq'; // <--- your Template ID
+const PUBLIC_KEY = 'AUwJcDs3i0NgUbhaf';    // <--- your Public Key (NOT template ID)
 
 export const sendEmail = async (name, email, message) => {
   try {
