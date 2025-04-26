@@ -19,6 +19,7 @@ const Register = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);  
   const navigate = useNavigate();
 
   useEffect(() => {
