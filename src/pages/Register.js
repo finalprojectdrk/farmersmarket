@@ -22,6 +22,11 @@ const Register = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);  
   const navigate = useNavigate();
 
+    // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setPasswordVisible(!passwordVisible);
+  };
+
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
     const userType = localStorage.getItem("userType");
