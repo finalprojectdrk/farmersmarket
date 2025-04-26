@@ -1,29 +1,28 @@
 // /src/utils/email.js
-import emailjs from 'emailjs-com';
+import emailjs from "emailjs-com";
 
-const SERVICE_ID = 'service_farmers';    // <--- your Service ID
-const TEMPLATE_ID = 'template_e983pnq'; // <--- your Template ID
-const PUBLIC_KEY = 'AUwJcDs3i0NgUbhaf';    // <--- your Public Key (NOT template ID)
+export const sendEmail = async (userName, userEmail) => {
+  // Ensure email is not empty
+  if (!userEmail || userEmail.trim() === "") {
+    console.error("Email address is empty!");
+    return;
+  }
 
-export const sendEmail = async (name, email, message) => {
+  const templateParams = {
+    user_name: userName,
+    user_email: userEmail,
+    message: `Hi ${userName}, your registration was successful! Welcome to Farmers Market.`,
+  };
+
   try {
-    const templateParams = {
-      to_name: name,
-      to_email: email,
-      message: message,
-    };
-
-    const response = await emailjs.send(
-      SERVICE_ID,
-      TEMPLATE_ID,
-      templateParams,
-      PUBLIC_KEY
-    );
-    
-    console.log('Email Sent:', response.text);
-    return response;
+    await emailjs.send(
+  'service_farmers', // <--- your Service ID
+'template_e983pnq', // <--- your Template ID
+templateParams,
+'AUwJcDs3i0NgUbhaf';    // <--- your Public Key (NOT template ID)
+  );
+    console.log("Email sent successfully!");
   } catch (error) {
-    console.error('Email Send Error:', error);
-    throw error;
+    console.error("Error sending email:", error);
   }
 };
