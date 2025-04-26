@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import "./WeatherWidget.css";
 
 const WeatherWidget = () => {
-  const [location, setLocation] = useState("Chennai"); // Default location
-  const [search, setSearch] = useState(""); // User input for search
+  const [location, setLocation] = useState("Chennai");
+  const [search, setSearch] = useState("");
   const [weather, setWeather] = useState(null);
-  const API_KEY = "2ab607c6bd2d472eac8e508b8d6f78e4"; // Replace with your API key
+  const API_KEY = "2ab607c6bd2d472eac8e508b8d6f78e4";
 
   useEffect(() => {
     const fetchWeather = async () => {
@@ -20,7 +20,7 @@ const WeatherWidget = () => {
         setWeather(data);
       } catch (error) {
         console.error("Error fetching weather data:", error);
-        setWeather(null); // Reset weather data on error
+        setWeather(null);
       }
     };
     fetchWeather();
@@ -30,7 +30,7 @@ const WeatherWidget = () => {
     e.preventDefault();
     if (search.trim() !== "") {
       setLocation(search);
-      setSearch(""); // Clear the search input after updating location
+      setSearch("");
     }
   };
 
@@ -50,4 +50,16 @@ const WeatherWidget = () => {
         <div className="weather-info">
           <h3>🌤️ {weather.name} Weather</h3>
           <p>🌡️ Temperature: {weather.main.temp}°C</p>
-          <p>🌬
+          <p>🌬️ Wind Speed: {weather.wind.speed} m/s</p>
+          <p>💧 Humidity: {weather.main.humidity}%</p>
+        </div>
+      ) : (
+        <p className="loading-text">
+          Weather data not available. Try another location.
+        </p>
+      )}
+    </div>
+  );
+};
+
+export default WeatherWidget;
