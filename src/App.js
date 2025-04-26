@@ -1,5 +1,3 @@
-// src/App.js
-
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
@@ -21,23 +19,20 @@ import SupplyChain from "./pages/SupplyChain";
 import RealTimePrices from "./pages/RealTimePrices";
 import Transactions from "./pages/Transactions";
 
-// 🔥 Private Route Wrapper
-const PrivateRoute = ({ element, isLoggedIn }) => {
-  return isLoggedIn ? element : <Navigate to="/login" />;
+// Private Route Wrapper
+const PrivateRoute = ({ children, isLoggedIn }) => {
+  return isLoggedIn ? children : <Navigate to="/login" />;
 };
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem("isLoggedIn") === "true");
-  const [userType, setUserType] = useState(localStorage.getItem("userType") || "");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userType, setUserType] = useState("");
 
   useEffect(() => {
-    const handleStorageChange = () => {
-      setIsLoggedIn(localStorage.getItem("isLoggedIn") === "true");
-      setUserType(localStorage.getItem("userType") || "");
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
+    const type = localStorage.getItem("userType") || "";
+    setIsLoggedIn(loggedIn);
+    setUserType(type);
   }, []);
 
   const handleLogout = () => {
@@ -51,41 +46,84 @@ const App = () => {
     <Router>
       <Navbar isLoggedIn={isLoggedIn} userType={userType} handleLogout={handleLogout} />
       <Routes>
-
-        {/* --- Public Routes --- */}
+        {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} setUserType={setUserType} />} />
         <Route path="/register" element={<Register />} />
 
-        {/* --- Private Route (Logged in users only) --- */}
-        <Route path="/user-selection" element={<PrivateRoute element={<UserSelection setUserType={setUserType} />} isLoggedIn={isLoggedIn} />} />
+        {/* Protected Route - User Selection */}
+        <Route path="/user-selection" element={
+          <PrivateRoute isLoggedIn={isLoggedIn}>
+            <UserSelection setUserType={setUserType} />
+          </PrivateRoute>
+        } />
 
-        {/* --- Farmer Routes --- */}
-        {userType === "farmer" && (
-          <>
-            <Route path="/farmer-dashboard" element={<PrivateRoute element={<FarmerDashboard />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/farmer-profile" element={<PrivateRoute element={<FarmerProfile />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/add-product" element={<PrivateRoute element={<AddProduct />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/supply-chain" element={<PrivateRoute element={<SupplyChain />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/real-time-prices" element={<PrivateRoute element={<RealTimePrices />} isLoggedIn={isLoggedIn} />} />
-          </>
-        )}
+        {/* Farmer Routes */}
+        <Route path="/farmer-dashboard" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "farmer"}>
+            <FarmerDashboard />
+          </PrivateRoute>
+        } />
+        <Route path="/farmer-profile" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "farmer"}>
+            <FarmerProfile />
+          </PrivateRoute>
+        } />
+        <Route path="/add-product" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "farmer"}>
+            <AddProduct />
+          </PrivateRoute>
+        } />
+        <Route path="/supply-chain" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "farmer"}>
+            <SupplyChain />
+          </PrivateRoute>
+        } />
+        <Route path="/real-time-prices" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "farmer"}>
+            <RealTimePrices />
+          </PrivateRoute>
+        } />
 
-        {/* --- Buyer Routes --- */}
-        {userType === "buyer" && (
-          <>
-            <Route path="/buyer-dashboard" element={<PrivateRoute element={<BuyerDashboard />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/products" element={<PrivateRoute element={<Products />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/product/:id" element={<PrivateRoute element={<ProductDetail />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/orders" element={<PrivateRoute element={<Orders />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/checkout" element={<PrivateRoute element={<Checkout />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/buyer-profile" element={<PrivateRoute element={<BuyerProfile />} isLoggedIn={isLoggedIn} />} />
-            <Route path="/transactions" element={<PrivateRoute element={<Transactions />} isLoggedIn={isLoggedIn} />} />
-          </>
-        )}
+        {/* Buyer Routes */}
+        <Route path="/buyer-dashboard" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "buyer"}>
+            <BuyerDashboard />
+          </PrivateRoute>
+        } />
+        <Route path="/products" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "buyer"}>
+            <Products />
+          </PrivateRoute>
+        } />
+        <Route path="/product/:id" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "buyer"}>
+            <ProductDetail />
+          </PrivateRoute>
+        } />
+        <Route path="/orders" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "buyer"}>
+            <Orders />
+          </PrivateRoute>
+        } />
+        <Route path="/checkout" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "buyer"}>
+            <Checkout />
+          </PrivateRoute>
+        } />
+        <Route path="/buyer-profile" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "buyer"}>
+            <BuyerProfile />
+          </PrivateRoute>
+        } />
+        <Route path="/transactions" element={
+          <PrivateRoute isLoggedIn={isLoggedIn && userType === "buyer"}>
+            <Transactions />
+          </PrivateRoute>
+        } />
 
-        {/* --- Redirect all unknown paths to Home --- */}
+        {/* Catch all unknown routes */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
