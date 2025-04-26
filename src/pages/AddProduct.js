@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { db, addDoc, collection } from "../firebase"; // Import Firestore methods
+import { db } from "../firebase"; // Import db from your own firebase.js
+import { collection, addDoc } from "firebase/firestore"; // Import these from firebase/firestore
 
 const AddProduct = () => {
   const [product, setProduct] = useState({
     name: "",
     price: "",
     quantity: "",
-    status: "Pending", // Default status for new products
-    transport: "", // Transport details for supply chain
   });
 
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -20,30 +20,29 @@ const AddProduct = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!product.name || !product.price || !product.quantity || !product.transport) {
+    if (!product.name || !product.price || !product.quantity) {
       alert("Please fill in all fields!");
       return;
     }
 
-    try {
-      // Get the reference to the 'products' collection
-      const productsRef = collection(db, "products");
+    setLoading(true);
 
-      // Add the new product to the Firestore database
-      await addDoc(productsRef, {
-        name: product.name,
-        price: product.price,
-        quantity: product.quantity,
-        status: product.status,
-        transport: product.transport,
+    try {
+      // Add product to Firestore
+      await addDoc(collection(db, "products"), {
+        ...product,
+        price: parseFloat(product.price),
+        quantity: parseInt(product.quantity),
         createdAt: new Date(),
       });
 
-      alert("Product added successfully!");
-      navigate("/farmer-dashboard"); // Redirect to dashboard
+      alert("✅ Product added successfully!");
+      navigate("/farmer-dashboard");
     } catch (error) {
-      console.error("Error adding product: ", error);
-      alert("Error adding product. Please try again.");
+      console.error("Error adding product:", error);
+      alert("Failed to add product. Please try again!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,16 +77,9 @@ const AddProduct = () => {
           required
           style={styles.input}
         />
-        <input
-          type="text"
-          name="transport"
-          placeholder="Transport Details (e.g., Truck - TN 45 AB 6789)"
-          value={product.transport}
-          onChange={handleChange}
-          required
-          style={styles.input}
-        />
-        <button type="submit" style={styles.button}>Add Product</button>
+        <button type="submit" style={styles.button} disabled={loading}>
+          {loading ? "Adding..." : "Add Product"}
+        </button>
       </form>
     </div>
   );
