@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone } from "react-icons/fa";
-import "./Auth.css";
-import * as sms from "../utils/sms";
-import * as email from "../utils/email";
-import { auth, db } from "../firebase";  // 👈 import Firebase
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore"; // 👈 Firestore for saving user details
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
+import "./Auth.css";
 
 const Register = () => {
   const [user, setUser] = useState({
@@ -21,69 +18,37 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    const userType = localStorage.getItem("userType");
-
-    if (isLoggedIn) {
-      navigate(userType === "buyer" ? "/buyer-dashboard" : "/farmer-dashboard");
-    }
-  }, [navigate]);
-
   const handleRegister = async (e) => {
     e.preventDefault();
-    const { name, email: userEmail, password, role, location, phone } = user;
+    const { name, email, password, role, location, phone } = user;
 
-    if (!name || !userEmail || !password || !location || !phone) {
-      alert("Please fill in all fields.");
+    if (!name || !email || !password || !location || !phone) {
+      alert("Please fill all fields");
       return;
     }
 
     setLoading(true);
 
     try {
-      // ✅ Create user in Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(auth, userEmail, password);
-      const registeredUser = userCredential.user;
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCreated = userCredential.user;
 
-      // ✅ Save additional info to Firestore Database
-      await setDoc(doc(db, "users", registeredUser.uid), {
-        uid: registeredUser.uid,
+      // Save user profile in Firestore
+      await setDoc(doc(db, "users", userCreated.uid), {
         name,
-        email: userEmail,
+        email,
         role,
         location,
         phone,
+        createdAt: new Date(),
       });
 
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userType", role);
-      localStorage.setItem("userEmail", userEmail);
-      localStorage.setItem("phonenumber", phone);
-
-      const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
-
-      // ✅ Send SMS
-      await sms.sendSMS(
-        formattedPhone,
-        `Hi ${name}, registration successful! Welcome to Farmers Market.`
-      );
-
-      // ✅ Send Email
-      await email.sendEmail(
-        name,
-        userEmail,
-        `Hi ${name},\n\nThank you for registering at Farmers Market! 🌾`
-      );
-
-      alert("Registration successful! Redirecting...");
-      setTimeout(() => {
-        navigate("/user-selection");
-      }, 500);
+      alert("Registration Successful!");
+      navigate("/login");
 
     } catch (error) {
       console.error("Registration Error:", error);
-      alert(error.message || "Registration failed!");
+      alert(error.message);
     } finally {
       setLoading(false);
     }
@@ -93,81 +58,17 @@ const Register = () => {
     <div className="auth-container">
       <h2>Register</h2>
       <form onSubmit={handleRegister}>
-        {loading ? (
-          <div className="spinner"></div>
-        ) : (
-          <>
-            <div className="input-group">
-              <FaUser className="icon" />
-              <input
-                type="text"
-                placeholder="Name"
-                value={user.name}
-                onChange={(e) => setUser({ ...user, name: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="input-group">
-              <FaEnvelope className="icon" />
-              <input
-                type="email"
-                placeholder="Email"
-                value={user.email}
-                onChange={(e) => setUser({ ...user, email: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="input-group">
-              <FaLock className="icon" />
-              <input
-                type="password"
-                placeholder="Password"
-                value={user.password}
-                onChange={(e) => setUser({ ...user, password: e.target.value })}
-                required
-              />
-            </div>
-
-            <select
-              value={user.role}
-              onChange={(e) => setUser({ ...user, role: e.target.value })}
-              required
-            >
-              <option value="buyer">Buyer</option>
-              <option value="farmer">Farmer</option>
-            </select>
-
-            <div className="input-group">
-              <FaMapMarkerAlt className="icon" />
-              <input
-                type="text"
-                placeholder="Location"
-                value={user.location}
-                onChange={(e) => setUser({ ...user, location: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="input-group">
-              <FaPhone className="icon" />
-              <input
-                type="text"
-                placeholder="Phone Number"
-                value={user.phone}
-                onChange={(e) => setUser({ ...user, phone: e.target.value })}
-                required
-              />
-            </div>
-
-            <button type="submit">Register</button>
-          </>
-        )}
+        <input type="text" placeholder="Name" value={user.name} onChange={(e) => setUser({ ...user, name: e.target.value })} required />
+        <input type="email" placeholder="Email" value={user.email} onChange={(e) => setUser({ ...user, email: e.target.value })} required />
+        <input type="password" placeholder="Password" value={user.password} onChange={(e) => setUser({ ...user, password: e.target.value })} required />
+        <select value={user.role} onChange={(e) => setUser({ ...user, role: e.target.value })}>
+          <option value="buyer">Buyer</option>
+          <option value="farmer">Farmer</option>
+        </select>
+        <input type="text" placeholder="Location" value={user.location} onChange={(e) => setUser({ ...user, location: e.target.value })} required />
+        <input type="text" placeholder="Phone" value={user.phone} onChange={(e) => setUser({ ...user, phone: e.target.value })} required />
+        <button type="submit">{loading ? "Registering..." : "Register"}</button>
       </form>
-      <p>
-        Already have an account? <a href="/login">Login here</a>
-      </p>
     </div>
   );
 };
