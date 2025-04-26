@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { db, addDoc, collection } from "../firebase"; // Import Firestore methods
 
 const AddProduct = () => {
   const [product, setProduct] = useState({
@@ -16,7 +17,7 @@ const AddProduct = () => {
     setProduct({ ...product, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!product.name || !product.price || !product.quantity || !product.transport) {
@@ -24,14 +25,26 @@ const AddProduct = () => {
       return;
     }
 
-    const storedProducts = JSON.parse(localStorage.getItem("farmerProducts")) || [];
-    const newProduct = { ...product, id: Date.now() };
-    storedProducts.push(newProduct);
+    try {
+      // Get the reference to the 'products' collection
+      const productsRef = collection(db, "products");
 
-    localStorage.setItem("farmerProducts", JSON.stringify(storedProducts));
+      // Add the new product to the Firestore database
+      await addDoc(productsRef, {
+        name: product.name,
+        price: product.price,
+        quantity: product.quantity,
+        status: product.status,
+        transport: product.transport,
+        createdAt: new Date(),
+      });
 
-    alert("Product added successfully!");
-    navigate("/farmer-dashboard");
+      alert("Product added successfully!");
+      navigate("/farmer-dashboard"); // Redirect to dashboard
+    } catch (error) {
+      console.error("Error adding product: ", error);
+      alert("Error adding product. Please try again.");
+    }
   };
 
   return (
