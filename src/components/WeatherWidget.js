@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import "./WeatherWidget.css";
 
 const WeatherWidget = () => {
@@ -11,10 +10,14 @@ const WeatherWidget = () => {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const response = await axios.get(
+        const response = await fetch(
           `https://api.openweathermap.org/data/2.5/weather?q=${location}&units=metric&appid=${API_KEY}`
         );
-        setWeather(response.data);
+        if (!response.ok) {
+          throw new Error("Weather data not found");
+        }
+        const data = await response.json();
+        setWeather(data);
       } catch (error) {
         console.error("Error fetching weather data:", error);
         setWeather(null); // Reset weather data on error
@@ -47,14 +50,4 @@ const WeatherWidget = () => {
         <div className="weather-info">
           <h3>🌤️ {weather.name} Weather</h3>
           <p>🌡️ Temperature: {weather.main.temp}°C</p>
-          <p>🌬️ Wind Speed: {weather.wind.speed} m/s</p>
-          <p>💧 Humidity: {weather.main.humidity}%</p>
-        </div>
-      ) : (
-        <p className="loading-text">Weather data not available. Try another location.</p>
-      )}
-    </div>
-  );
-};
-
-export default WeatherWidget;
+          <p>🌬
