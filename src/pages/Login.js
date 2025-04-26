@@ -3,7 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { FaUser, FaLock, FaEnvelope } from "react-icons/fa";
 import "./Auth.css";
 import { sendSMS } from '../utils/sms';
-import { sendEmail } from '../utils/email'; // import email sending
+import { sendEmail } from '../utils/email';
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../utils/firebase"; // Make sure you have firebase.js set up properly
 
 const Login = ({ setIsLoggedIn, setUserType }) => {
   const [user, setUser] = useState({ email: "", password: "" });
@@ -18,59 +21,59 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
       return;
     }
 
-    const storedUsers = JSON.parse(localStorage.getItem("users")) || [];
-    const validUser = storedUsers.find((u) => u.email === email);
+    try {
+      // ✅ Firebase authentication
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userId = userCredential.user.uid;
 
-    if (!validUser) {
-      alert("Email not found. Please register first.");
-      return;
-    }
+      // ✅ Fetch user profile from Firestore
+      const userDoc = await getDoc(doc(db, "users", userId));
 
-    if (validUser.password !== password) {
-      alert("Invalid password!");
-
-      // 🔥 Send SMS alert for wrong password attempt
-      const cleanedPhone = validUser.phone.startsWith("+91") ? validUser.phone : `+91${validUser.phone}`;
-      try {
-        await sendSMS(cleanedPhone, `Someone tried to login with wrong password to your Farmers Market account.`);
-      } catch (error) {
-        console.error("Failed to send wrong password SMS:", error);
+      if (!userDoc.exists()) {
+        alert("User profile not found!");
+        return;
       }
 
-      return;
-    }
+      const userData = userDoc.data();
 
-    // ✅ Save login session
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("userType", validUser.role);
-    localStorage.setItem("userEmail", validUser.email);
-    localStorage.setItem('phonenumber', validUser.phone);
+      // ✅ Save login session
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("userType", userData.role); // role must be stored while registration
+      localStorage.setItem("userEmail", userData.email);
+      localStorage.setItem("phonenumber", userData.phone);
 
-    setIsLoggedIn(true);
-    setUserType(validUser.role);
+      setIsLoggedIn(true);
+      setUserType(userData.role);
 
-    alert("Login successful! Sending confirmation...");
+      alert("Login successful! Sending confirmation...");
 
-    try {
-      // 🔥 Send login SMS
-      const cleanedPhone = validUser.phone.startsWith("+91") ? validUser.phone : `+91${validUser.phone}`;
-      await sendSMS(cleanedPhone, `Hi ${validUser.name}, you have successfully logged into Farmers Market.`);
+      try {
+        const cleanedPhone = userData.phone.startsWith("+91") ? userData.phone : `+91${userData.phone}`;
 
-      // 🔥 Send login Email
-      await sendEmail(
-        validUser.email,
-        "Login Successful - Farmers Market",
-        `Hi ${validUser.name},\n\nYou have successfully logged into your account.\n\nIf this wasn't you, please reset your password immediately.\n\nThank you,\nFarmers Market Team`
-      );
+        // 🔥 Send login SMS
+        await sendSMS(cleanedPhone, `Hi ${userData.name}, you have successfully logged into Farmers Market.`);
 
-      console.log("SMS and Email Sent Successfully!");
+        // 🔥 Send login Email
+        await sendEmail(
+          userData.email,
+          "Login Successful - Farmers Market",
+          `Hi ${userData.name},\n\nYou have successfully logged into your account.\n\nIf this wasn't you, please reset your password immediately.\n\nThank you,\nFarmers Market Team`
+        );
+
+        console.log("SMS and Email Sent Successfully!");
+      } catch (error) {
+        console.error("Error sending SMS/Email:", error);
+      }
+
+      // ✅ Navigate to user selection
+      setTimeout(() => {
+        navigate("/user-selection");
+      }, 1000);
+
     } catch (error) {
-      console.error("Error sending SMS/Email:", error);
+      console.error("Login error:", error);
+      alert(error.message);
     }
-
-    setTimeout(() => {
-      navigate("/user-selection");
-    }, 1000);
   };
 
   return (
