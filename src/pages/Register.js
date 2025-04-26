@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone } from "react-icons/fa";
+import { FaUser, FaLock, FaEnvelope, FaMapMarkerAlt, FaPhone, FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Auth.css";
 import { sendSMS } from "../utils/sms";
 import { sendEmail } from "../utils/email";
@@ -19,13 +19,8 @@ const Register = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [passwordVisible, setPasswordVisible] = useState(false);  
+  const [passwordVisible, setPasswordVisible] = useState(false);  // Password visibility toggle state
   const navigate = useNavigate();
-
-    // Toggle password visibility
-  const togglePasswordVisibility = () => {
-    setPasswordVisible(!passwordVisible);
-  };
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
@@ -106,6 +101,10 @@ const Register = () => {
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setPasswordVisible(!passwordVisible);
+  };
+
   return (
     <div className="auth-container">
       <h2>Register</h2>
@@ -136,7 +135,7 @@ const Register = () => {
               />
             </div>
 
-          <div className="input-group">
+            <div className="input-group">
               <FaLock className="icon" />
               <input
                 type={passwordVisible ? "text" : "password"}  // Dynamically toggle password visibility
