@@ -15,6 +15,8 @@ const FarmerDashboard = () => {
   const [products, setProducts] = useState([]);
   const [productPage, setProductPage] = useState(1);
   const [productTotalPages, setProductTotalPages] = useState(1);
+  const [predictionData, setPredictionData] = useState(null); // <-- NEW for predictions
+  const [selectedCrop, setSelectedCrop] = useState(""); // <-- NEW for selecting crop
 
   const recordsPerPage = 10;
   const productsPerPage = 5;
@@ -131,6 +133,26 @@ const FarmerDashboard = () => {
     setCurrentPage(1);
   };
 
+  const handlePredictPrices = async () => {
+    if (!selectedCrop) {
+      alert("Please select a crop to predict!");
+      return;
+    }
+
+    try {
+      const response = await fetch(`https://crop-predictor-backend.onrender.com/predict?crop=${selectedCrop}`);
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+      setPredictionData(data);
+    } catch (error) {
+      console.error("Error fetching prediction:", error);
+      alert("Failed to fetch prediction.");
+    }
+  };
+
   if (loading) return <div>Loading real-time crop prices...</div>;
   if (error) return <div>Error: {error}</div>;
 
@@ -147,6 +169,43 @@ const FarmerDashboard = () => {
           onChange={handleFilterChange}
           placeholder="Search by crop or market..."
         />
+      </div>
+
+      {/* 🆕 Select Crop for Prediction */}
+      <div className="prediction-section card">
+        <h3>📈 Predict Future Crop Prices</h3>
+        <input
+          type="text"
+          placeholder="Enter crop name (e.g., Wheat)"
+          value={selectedCrop}
+          onChange={(e) => setSelectedCrop(e.target.value)}
+        />
+        <button onClick={handlePredictPrices} style={styles.predictButton}>
+          Predict Prices
+        </button>
+
+        {/* 🆕 Show Prediction Results */}
+        {predictionData && (
+          <div className="prediction-results">
+            <h4>Prediction for {predictionData.crop} (next 7 days)</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Predicted Price (₹/kg)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {predictionData.dates.map((date, index) => (
+                  <tr key={index}>
+                    <td>{date}</td>
+                    <td>₹ {predictionData.prices[index].toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="price-section card">
@@ -287,6 +346,15 @@ const styles = {
     borderRadius: "4px",
     cursor: "pointer",
   },
+  predictButton: {
+    marginTop: "10px",
+    padding: "10px 20px",
+    backgroundColor: "#ff9800",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer",
+  }
 };
 
 export default FarmerDashboard;
