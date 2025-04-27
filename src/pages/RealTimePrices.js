@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import "./FarmerDashboard.css";
 
 const FarmerDashboard = () => {
@@ -13,14 +13,18 @@ const FarmerDashboard = () => {
   const [allCropPrices, setAllCropPrices] = useState([]);
   const [filter, setFilter] = useState("");
   const [products, setProducts] = useState([]);
+  const [productPage, setProductPage] = useState(1);
+  const [productTotalPages, setProductTotalPages] = useState(1);
 
   const recordsPerPage = 10;
+  const productsPerPage = 5;
 
   // Fetch Crop Prices
   useEffect(() => {
     const fetchCropPrices = async () => {
       try {
-        const url = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000017704f08e67e4414747189afb9ef2d662&format=json&offset=0&limit=4000";
+        const url =
+          "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000017704f08e67e4414747189afb9ef2d662&format=json&offset=0&limit=4000";
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error("Failed to fetch crop prices");
@@ -52,10 +56,7 @@ const FarmerDashboard = () => {
         const user = auth.currentUser;
         if (!user) return;
 
-        const q = query(
-          collection(db, "products"),
-          where("farmerEmail", "==", user.email)
-        );
+        const q = query(collection(db, "products"), where("farmerEmail", "==", user.email));
         const querySnapshot = await getDocs(q);
 
         const fetchedProducts = [];
@@ -64,6 +65,7 @@ const FarmerDashboard = () => {
         });
 
         setProducts(fetchedProducts);
+        setProductTotalPages(Math.ceil(fetchedProducts.length / productsPerPage));
       } catch (error) {
         console.error("Error fetching products:", error);
       }
@@ -80,6 +82,18 @@ const FarmerDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const handleDelete = async (productId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this product?");
+    if (confirmDelete) {
+      try {
+        await deleteDoc(doc(db, "products", productId));
+        setProducts(products.filter((product) => product.id !== productId));
+      } catch (error) {
+        console.error("Error deleting product:", error);
+      }
+    }
+  };
+
   const filteredData = allCropPrices.filter(
     (priceData) =>
       priceData.crop.toLowerCase().includes(filter.toLowerCase()) ||
@@ -91,16 +105,25 @@ const FarmerDashboard = () => {
     currentPage * recordsPerPage
   );
 
+  const currentProductData = products.slice(
+    (productPage - 1) * productsPerPage,
+    productPage * productsPerPage
+  );
+
   const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => prev + 1);
-    }
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
   const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
-    }
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
+
+  const handleProductNextPage = () => {
+    if (productPage < productTotalPages) setProductPage((prev) => prev + 1);
+  };
+
+  const handleProductPrevPage = () => {
+    if (productPage > 1) setProductPage((prev) => prev - 1);
   };
 
   const handleFilterChange = (e) => {
@@ -169,30 +192,101 @@ const FarmerDashboard = () => {
       <div className="products-section card">
         <h3>📦 Your Listed Products</h3>
         {products.length > 0 ? (
-          <table>
-            <thead>
-              <tr>
-                <th>Product Name</th>
-                <th>Price (₹)</th>
-                <th>Quantity (kg)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td>{product.productName}</td>
-                  <td>₹ {product.price}</td>
-                  <td>{product.quantity}</td>
+          <div style={styles.tableContainer}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Product Name</th>
+                  <th style={styles.th}>Price (₹)</th>
+                  <th style={styles.th}>Quantity (kg)</th>
+                  <th style={styles.th}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentProductData.map((product) => (
+                  <tr key={product.id}>
+                    <td style={styles.td}>{product.name}</td>
+                    <td style={styles.td}>₹ {product.price}</td>
+                    <td style={styles.td}>{product.quantity}</td>
+                    <td style={styles.td}>
+                      <button style={styles.editButton} onClick={() => alert("Edit feature coming soon!")}>
+                        Edit
+                      </button>
+                      <button style={styles.deleteButton} onClick={() => handleDelete(product.id)}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p>No products listed yet!</p>
+        )}
+
+        {products.length > productsPerPage && (
+          <div className="pagination">
+            <button onClick={handleProductPrevPage} disabled={productPage === 1}>
+              Previous
+            </button>
+            <span>
+              Page {productPage} of {productTotalPages}
+            </span>
+            <button
+              onClick={handleProductNextPage}
+              disabled={productPage === productTotalPages}
+            >
+              Next
+            </button>
+          </div>
         )}
       </div>
     </div>
   );
+};
+
+const styles = {
+  tableContainer: {
+    display: "flex",
+    justifyContent: "center",
+    marginTop: "20px",
+  },
+  table: {
+    borderCollapse: "collapse",
+    width: "90%",
+    textAlign: "center",
+    backgroundColor: "#f9f9f9",
+    boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+    borderRadius: "8px",
+    overflow: "hidden",
+  },
+  th: {
+    backgroundColor: "#4caf50",
+    color: "white",
+    padding: "12px",
+  },
+  td: {
+    padding: "10px",
+    borderBottom: "1px solid #ddd",
+  },
+  editButton: {
+    marginRight: "10px",
+    padding: "6px 12px",
+    backgroundColor: "#2196F3",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  deleteButton: {
+    padding: "6px 12px",
+    backgroundColor: "#f44336",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
 };
 
 export default FarmerDashboard;
