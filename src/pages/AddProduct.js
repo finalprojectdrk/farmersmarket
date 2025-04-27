@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { db } from "../firebase"; // Import db from your own firebase.js
-import { collection, addDoc } from "firebase/firestore"; // Import these from firebase/firestore
+import { db, auth } from "../firebase"; // Make sure auth is also imported
+import { collection, addDoc } from "firebase/firestore";
 
 const AddProduct = () => {
   const [product, setProduct] = useState({
@@ -28,11 +28,19 @@ const AddProduct = () => {
     setLoading(true);
 
     try {
-      // Add product to Firestore
+      const user = auth.currentUser;
+      if (!user) {
+        alert("You must be logged in to add products!");
+        setLoading(false);
+        return;
+      }
+
+      // Add product to Firestore, including farmerEmail
       await addDoc(collection(db, "products"), {
-        ...product,
+        productName: product.name,
         price: parseFloat(product.price),
         quantity: parseInt(product.quantity),
+        farmerEmail: user.email, // ✅ Store logged-in user's email
         createdAt: new Date(),
       });
 
@@ -97,7 +105,7 @@ const styles = {
     textAlign: "center",
   },
   heading: {
-    color: "#2e7d32", // Dark Green
+    color: "#2e7d32",
     fontSize: "24px",
     fontWeight: "bold",
     marginBottom: "20px",
@@ -116,7 +124,7 @@ const styles = {
     outline: "none",
   },
   button: {
-    background: "#ff9800", // Orange
+    background: "#ff9800",
     color: "white",
     padding: "12px",
     border: "none",
