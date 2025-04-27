@@ -205,7 +205,7 @@ const FarmerDashboard = () => {
               <tbody>
                 {currentProductData.map((product) => (
                   <tr key={product.id}>
-                    <td style={styles.td}>{product.name}</td>
+                    <td style={styles.td}>{product.productName}</td>
                     <td style={styles.td}>₹ {product.price}</td>
                     <td style={styles.td}>{product.quantity}</td>
                     <td style={styles.td}>
