@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { onAuthStateChanged, signOut } from "firebase/auth"; // ✅ import Firebase auth
+import { auth } from "./firebase"; // ✅ make sure firebase.js exports auth
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Contact from "./pages/Contact";
@@ -27,32 +29,52 @@ const PrivateRoute = ({ children, isLoggedIn }) => {
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-    const type = localStorage.getItem("userType") || "";
-    setIsLoggedIn(loggedIn);
-    setUserType(type);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLoggedIn(true);
+        const storedUserType = localStorage.getItem("userType") || "";
+        setUserType(storedUserType);
+      } else {
+        setIsLoggedIn(false);
+        setUserType("");
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe(); // Cleanup listener
   }, []);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    setIsLoggedIn(false);
-    setUserType("");
-    alert("You have logged out!");
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.clear();
+      setIsLoggedIn(false);
+      setUserType("");
+      alert("You have logged out!");
+    } catch (error) {
+      console.error("Error during logout", error);
+    }
   };
+
+  if (loading) {
+    return <div>Loading...</div>; // Optional: Spinner while checking auth
+  }
 
   return (
     <Router>
       <Navbar isLoggedIn={isLoggedIn} userType={userType} handleLogout={handleLogout} />
       <Routes>
+
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} setUserType={setUserType} />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Protected Route - User Selection */}
+        {/* Protected User Selection */}
         <Route path="/user-selection" element={
           <PrivateRoute isLoggedIn={isLoggedIn}>
             <UserSelection setUserType={setUserType} />
@@ -123,7 +145,7 @@ const App = () => {
           </PrivateRoute>
         } />
 
-        {/* Catch all unknown routes */}
+        {/* Catch-all route */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </Router>
