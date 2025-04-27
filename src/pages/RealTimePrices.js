@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import ProductList from "../components/ProductList";
-import "./FarmerDashboard.css"; // Import CSS for styling
+import { db, auth } from "../firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import "./FarmerDashboard.css";
 
 const FarmerDashboard = () => {
   const [cropPrices, setCropPrices] = useState([]);
@@ -9,39 +10,31 @@ const FarmerDashboard = () => {
   const [currentDateTime, setCurrentDateTime] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [allCropPrices, setAllCropPrices] = useState([]); // Store all crop prices for pagination
-  const [filter, setFilter] = useState(""); // State to store filter input
-  const recordsPerPage = 10; // Number of records per page
+  const [allCropPrices, setAllCropPrices] = useState([]);
+  const [filter, setFilter] = useState("");
+  const [products, setProducts] = useState([]);
 
-  // Fetch crop prices from the API
+  const recordsPerPage = 10;
+
+  // Fetch Crop Prices
   useEffect(() => {
     const fetchCropPrices = async () => {
       try {
-        // API URL with your API key and other parameters (fetching all records)
-        const url =
-          "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000017704f08e67e4414747189afb9ef2d662&format=json&offset=0&limit=4000"; // A large limit to get all records
-        
+        const url = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000017704f08e67e4414747189afb9ef2d662&format=json&offset=0&limit=4000";
         const response = await fetch(url);
         if (!response.ok) {
           throw new Error("Failed to fetch crop prices");
         }
-
         const data = await response.json();
-        const records = data.records;
+        const records = data.records.map((record) => ({
+          crop: record.commodity,
+          price: (parseFloat(record.modal_price) / 100).toFixed(2),
+          market: record.market,
+          date: new Date().toLocaleString(),
+        }));
 
-        // Map over the records and format them
-        const formattedData = records.map((record) => {
-          const priceInKg = parseFloat(record.modal_price) / 100;
-          return {
-            crop: record.commodity,
-            price: priceInKg.toFixed(2),
-            market: record.market,
-            date: new Date().toLocaleString(), // Current date and time
-          };
-        });
-
-        setAllCropPrices(formattedData);
-        setTotalPages(Math.ceil(formattedData.length / recordsPerPage)); // Calculate total pages
+        setAllCropPrices(records);
+        setTotalPages(Math.ceil(records.length / recordsPerPage));
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -50,30 +43,49 @@ const FarmerDashboard = () => {
     };
 
     fetchCropPrices();
-  }, []); // Only fetch once when component mounts
-
-  // Update current date and time every second
-  useEffect(() => {
-    const updateDateTime = () => {
-      const currentDate = new Date();
-      const formattedDate = currentDate.toLocaleString();
-      setCurrentDateTime(formattedDate);
-    };
-
-    updateDateTime();
-    const interval = setInterval(updateDateTime, 1000);
-
-    return () => clearInterval(interval); // Clean up the interval on component unmount
   }, []);
 
-  // Get the filtered crop prices (with pagination applied)
+  // Fetch Farmer's Products
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const q = query(
+          collection(db, "products"),
+          where("farmerEmail", "==", user.email)
+        );
+        const querySnapshot = await getDocs(q);
+
+        const fetchedProducts = [];
+        querySnapshot.forEach((doc) => {
+          fetchedProducts.push({ id: doc.id, ...doc.data() });
+        });
+
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Update DateTime
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentDateTime(new Date().toLocaleString());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const filteredData = allCropPrices.filter(
     (priceData) =>
       priceData.crop.toLowerCase().includes(filter.toLowerCase()) ||
       priceData.market.toLowerCase().includes(filter.toLowerCase())
   );
 
-  // Get the crop prices for the current page
   const currentData = filteredData.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
@@ -81,37 +93,30 @@ const FarmerDashboard = () => {
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
-      setCurrentPage((prevPage) => prevPage + 1);
+      setCurrentPage((prev) => prev + 1);
     }
   };
 
   const handlePrevPage = () => {
     if (currentPage > 1) {
-      setCurrentPage((prevPage) => prevPage - 1);
+      setCurrentPage((prev) => prev - 1);
     }
   };
 
   const handleFilterChange = (e) => {
     setFilter(e.target.value);
-    setCurrentPage(1); // Reset to the first page when filter changes
+    setCurrentPage(1);
   };
 
-  if (loading) {
-    return <div>Loading real-time crop prices...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
+  if (loading) return <div>Loading real-time crop prices...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   return (
     <div className="dashboard-container">
-      {/* ✅ Real-Time Date and Time */}
       <div className="current-datetime">
         <h4>Current Date & Time: {currentDateTime}</h4>
       </div>
 
-      {/* ✅ Filter Section */}
       <div className="filter-section">
         <input
           type="text"
@@ -121,7 +126,6 @@ const FarmerDashboard = () => {
         />
       </div>
 
-      {/* ✅ Real-Time Price Discovery Section */}
       <div className="price-section card">
         <h3>🌾 Real-Time Crop Prices</h3>
         <table>
@@ -134,17 +138,17 @@ const FarmerDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {/* Map over currentData (page-specific data) */}
             {currentData.map((priceData, index) => (
               <tr key={index}>
                 <td>{priceData.crop}</td>
                 <td>₹ {priceData.price}</td>
                 <td>{priceData.market}</td>
-                <td>{currentDateTime}</td>
+                <td>{priceData.date}</td>
               </tr>
             ))}
           </tbody>
         </table>
+
         <div className="pagination">
           <button onClick={handlePrevPage} disabled={currentPage === 1}>
             Previous
@@ -161,10 +165,31 @@ const FarmerDashboard = () => {
         </div>
       </div>
 
-      {/* ✅ Listed Products Section */}
+      {/* Farmer's Products */}
       <div className="products-section card">
         <h3>📦 Your Listed Products</h3>
-        <ProductList />
+        {products.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Price (₹)</th>
+                <th>Quantity (kg)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr key={product.id}>
+                  <td>{product.productName}</td>
+                  <td>₹ {product.price}</td>
+                  <td>{product.quantity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>No products listed yet!</p>
+        )}
       </div>
     </div>
   );
