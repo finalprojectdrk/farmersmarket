@@ -15,23 +15,23 @@ const FarmerDashboard = () => {
   const [products, setProducts] = useState([]);
   const [productPage, setProductPage] = useState(1);
   const [productTotalPages, setProductTotalPages] = useState(1);
-  const [predictionData, setPredictionData] = useState(null); // <-- NEW for predictions
-  const [selectedCrop, setSelectedCrop] = useState(""); // <-- NEW for selecting crop
+  const [predictionData, setPredictionData] = useState(null);
+  const [selectedCrop, setSelectedCrop] = useState("");
+  const [predictionLoading, setPredictionLoading] = useState(false);
 
   const recordsPerPage = 10;
   const productsPerPage = 5;
 
-  // Fetch Crop Prices
+  // Fetch crop prices
   useEffect(() => {
     const fetchCropPrices = async () => {
       try {
         const url =
           "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=579b464db66ec23bdd0000017704f08e67e4414747189afb9ef2d662&format=json&offset=0&limit=4000";
         const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error("Failed to fetch crop prices");
-        }
+        if (!response.ok) throw new Error("Failed to fetch crop prices");
         const data = await response.json();
+
         const records = data.records.map((record) => ({
           crop: record.commodity,
           price: (parseFloat(record.modal_price) / 100).toFixed(2),
@@ -51,7 +51,7 @@ const FarmerDashboard = () => {
     fetchCropPrices();
   }, []);
 
-  // Fetch Farmer's Products
+  // Fetch farmer's products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -76,7 +76,6 @@ const FarmerDashboard = () => {
     fetchProducts();
   }, []);
 
-  // Update DateTime
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentDateTime(new Date().toLocaleString());
@@ -85,21 +84,60 @@ const FarmerDashboard = () => {
   }, []);
 
   const handleDelete = async (productId) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this product?");
-    if (confirmDelete) {
-      try {
-        await deleteDoc(doc(db, "products", productId));
-        setProducts(products.filter((product) => product.id !== productId));
-      } catch (error) {
-        console.error("Error deleting product:", error);
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    try {
+      await deleteDoc(doc(db, "products", productId));
+      setProducts(products.filter((product) => product.id !== productId));
+    } catch (error) {
+      console.error("Error deleting product:", error);
+    }
+  };
+
+  const handlePredictPrices = async () => {
+    if (!selectedCrop.trim()) {
+      alert("Please enter a crop name for prediction.");
+      return;
+    }
+
+    try {
+      setPredictionLoading(true);
+      setPredictionData(null);
+      const response = await fetch(`/api/predict`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ crop: selectedCrop.trim() })
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+        return;
       }
+
+      const today = new Date();
+      const next7Dates = Array.from({ length: 7 }, (_, i) =>
+        new Date(today.getTime() + i * 86400000).toLocaleDateString()
+      );
+
+      setPredictionData({
+        crop: selectedCrop.trim(),
+        prices: data.predicted_prices,
+        dates: next7Dates,
+      });
+    } catch (error) {
+      console.error("Prediction error:", error);
+      alert("Failed to fetch prediction.");
+    } finally {
+      setPredictionLoading(false);
     }
   };
 
   const filteredData = allCropPrices.filter(
-    (priceData) =>
-      priceData.crop.toLowerCase().includes(filter.toLowerCase()) ||
-      priceData.market.toLowerCase().includes(filter.toLowerCase())
+    (p) =>
+      p.crop.toLowerCase().includes(filter.toLowerCase()) ||
+      p.market.toLowerCase().includes(filter.toLowerCase())
   );
 
   const currentData = filteredData.slice(
@@ -111,47 +149,6 @@ const FarmerDashboard = () => {
     (productPage - 1) * productsPerPage,
     productPage * productsPerPage
   );
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
-  };
-
-  const handleProductNextPage = () => {
-    if (productPage < productTotalPages) setProductPage((prev) => prev + 1);
-  };
-
-  const handleProductPrevPage = () => {
-    if (productPage > 1) setProductPage((prev) => prev - 1);
-  };
-
-  const handleFilterChange = (e) => {
-    setFilter(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handlePredictPrices = async () => {
-    if (!selectedCrop) {
-      alert("Please select a crop to predict!");
-      return;
-    }
-
-    try {
-      const response = await fetch(`https://crop-predictor-backend.onrender.com/predict?crop=${selectedCrop}`);
-      const data = await response.json();
-      if (data.error) {
-        alert(data.error);
-        return;
-      }
-      setPredictionData(data);
-    } catch (error) {
-      console.error("Error fetching prediction:", error);
-      alert("Failed to fetch prediction.");
-    }
-  };
 
   if (loading) return <div>Loading real-time crop prices...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -166,12 +163,15 @@ const FarmerDashboard = () => {
         <input
           type="text"
           value={filter}
-          onChange={handleFilterChange}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setCurrentPage(1);
+          }}
           placeholder="Search by crop or market..."
         />
       </div>
 
-      {/* 🆕 Select Crop for Prediction */}
+      {/* 🧠 Prediction Section */}
       <div className="prediction-section card">
         <h3>📈 Predict Future Crop Prices</h3>
         <input
@@ -180,14 +180,13 @@ const FarmerDashboard = () => {
           value={selectedCrop}
           onChange={(e) => setSelectedCrop(e.target.value)}
         />
-        <button onClick={handlePredictPrices} style={styles.predictButton}>
-          Predict Prices
+        <button onClick={handlePredictPrices} style={styles.predictButton} disabled={predictionLoading}>
+          {predictionLoading ? "Predicting..." : "Predict Prices"}
         </button>
 
-        {/* 🆕 Show Prediction Results */}
         {predictionData && (
           <div className="prediction-results">
-            <h4>Prediction for {predictionData.crop} (next 7 days)</h4>
+            <h4>Prediction for {predictionData.crop} (Next 7 Days)</h4>
             <table>
               <thead>
                 <tr>
@@ -208,6 +207,7 @@ const FarmerDashboard = () => {
         )}
       </div>
 
+      {/* Real-Time Crop Prices */}
       <div className="price-section card">
         <h3>🌾 Real-Time Crop Prices</h3>
         <table>
@@ -232,22 +232,22 @@ const FarmerDashboard = () => {
         </table>
 
         <div className="pagination">
-          <button onClick={handlePrevPage} disabled={currentPage === 1}>
+          <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}>
             Previous
           </button>
           <span>
-            Page {currentPage} of {Math.ceil(filteredData.length / recordsPerPage)}
+            Page {currentPage} of {totalPages}
           </span>
           <button
-            onClick={handleNextPage}
-            disabled={currentPage === Math.ceil(filteredData.length / recordsPerPage)}
+            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
           >
             Next
           </button>
         </div>
       </div>
 
-      {/* Farmer's Products */}
+      {/* Farmer Products */}
       <div className="products-section card">
         <h3>📦 Your Listed Products</h3>
         {products.length > 0 ? (
@@ -286,14 +286,14 @@ const FarmerDashboard = () => {
 
         {products.length > productsPerPage && (
           <div className="pagination">
-            <button onClick={handleProductPrevPage} disabled={productPage === 1}>
+            <button onClick={() => setProductPage((p) => Math.max(p - 1, 1))} disabled={productPage === 1}>
               Previous
             </button>
             <span>
               Page {productPage} of {productTotalPages}
             </span>
             <button
-              onClick={handleProductNextPage}
+              onClick={() => setProductPage((p) => Math.min(p + 1, productTotalPages))}
               disabled={productPage === productTotalPages}
             >
               Next
