@@ -7,6 +7,9 @@ import {
   doc,
   addDoc,
   updateDoc,
+  getDocs,
+  query,
+  where,
 } from "firebase/firestore";
 import { LoadScript } from "@react-google-maps/api";
 import { db } from "../firebase";
@@ -89,15 +92,17 @@ const CheckoutForm = () => {
 
   const sendNotification = async (orderId) => {
     try {
+      // Buyer SMS
       const cleanedPhone = details.contact.startsWith("+91")
         ? details.contact
         : `+91${details.contact}`;
 
       await sendSMS(
         cleanedPhone,
-        `Hi ${details.name}, you have successfully placed the order: ${orderId}.`
+        `Hi ${details.name}, your order (${orderId}) has been placed successfully!`
       );
 
+      // Buyer Email
       if (user?.email) {
         await sendEmail(
           user.email,
@@ -106,9 +111,29 @@ const CheckoutForm = () => {
         );
       }
 
-      console.log(`📩 Confirmation sent for Order ID: ${orderId}`);
+      // Notify all farmers
+      const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
+      const farmerSnapshot = await getDocs(farmersQuery);
+
+      const notifyFarmers = farmerSnapshot.docs.map(async (docSnap) => {
+        const farmer = docSnap.data();
+        const farmerPhone = farmer.phone?.startsWith("+91")
+          ? farmer.phone
+          : `+91${farmer.phone}`;
+
+        if (farmerPhone) {
+          return sendSMS(
+            farmerPhone,
+            `📢 New Order Alert: Order ${orderId} has been placed. Check your dashboard for details.`
+          );
+        }
+      });
+
+      await Promise.all(notifyFarmers);
+
+      console.log(`📩 Notifications sent for Order ID: ${orderId}`);
     } catch (error) {
-      console.error("Error sending SMS/Email:", error);
+      console.error("Error sending notifications:", error);
     }
   };
 
