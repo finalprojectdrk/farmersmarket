@@ -16,6 +16,7 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const user = useAuth();
 
+  // Fetch cart items from Firestore
   useEffect(() => {
     if (!user) return;
 
@@ -28,6 +29,7 @@ const Checkout = () => {
     return () => unsubscribe();
   }, [user]);
 
+  // Get coordinates from the entered address using Google Maps API
   const getCoordinatesFromAddress = async (address) => {
     const geocoder = new window.google.maps.Geocoder();
     return new Promise((resolve, reject) => {
@@ -44,10 +46,12 @@ const Checkout = () => {
     });
   };
 
+  // Handle changes to form fields
   const handleChange = (e) => {
     setDetails({ ...details, [e.target.name]: e.target.value });
   };
 
+  // Handle location setting from the address input
   const handleLocation = async () => {
     if (!details.address) return alert("Enter address first");
     try {
@@ -59,6 +63,7 @@ const Checkout = () => {
     }
   };
 
+  // Confirm and place the order
   const handleOrderConfirm = async () => {
     if (!details.name || !details.address || !details.contact) return alert("Please fill all fields");
     if (!location.latitude) return alert("Please fetch location");
@@ -71,20 +76,21 @@ const Checkout = () => {
         cart.map(async (item) => {
           await addDoc(collection(db, "supplyChainOrders"), {
             buyer: details.name,
-            buyerId: user.uid, // ✅ store UID for buyer
+            buyerId: user.uid, // Store UID for buyer
             crop: item.name,
             farmer: item.farmer,
             location,
-            status: "Pending",
+            status: "Pending", // Order initially in "Pending" state
             transport: "Not Assigned",
             createdAt: new Date(),
           });
 
+          // Delete item from the cart after placing the order
           await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
         })
       );
       alert("✅ Orders placed!");
-      navigate("/products");
+      navigate("/products"); // Redirect after order placement
     } catch (e) {
       console.error(e);
       alert("❌ Order failed");
@@ -97,10 +103,28 @@ const Checkout = () => {
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
       <div className="checkout-container">
         <h2>🧾 Checkout</h2>
-        <input name="name" placeholder="Name" onChange={handleChange} required />
-        <input name="address" placeholder="Delivery Address" onChange={handleChange} required />
-        <input name="contact" placeholder="Contact" onChange={handleChange} required />
-        <select name="payment" onChange={handleChange}>
+        <input
+          name="name"
+          placeholder="Name"
+          value={details.name}
+          onChange={handleChange}
+          required
+        />
+        <input
+          name="address"
+          placeholder="Delivery Address"
+          value={details.address}
+          onChange={handleChange}
+          required
+        />
+        <input
+          name="contact"
+          placeholder="Contact"
+          value={details.contact}
+          onChange={handleChange}
+          required
+        />
+        <select name="payment" value={details.payment} onChange={handleChange}>
           <option value="COD">Cash on Delivery</option>
           <option value="UPI">UPI</option>
         </select>
