@@ -2,10 +2,18 @@ import React, { useState, useEffect } from "react";
 import { db, auth } from "../firebase";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
 import "./FarmerDashboard.css";
 
-// Register necessary chart components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 const FarmerDashboard = () => {
@@ -28,7 +36,6 @@ const FarmerDashboard = () => {
   const recordsPerPage = 10;
   const productsPerPage = 5;
 
-  // Fetch real-time crop prices data
   useEffect(() => {
     const fetchCropPrices = async () => {
       try {
@@ -57,7 +64,6 @@ const FarmerDashboard = () => {
     fetchCropPrices();
   }, []);
 
-  // Fetch products from the database
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -68,8 +74,8 @@ const FarmerDashboard = () => {
         const querySnapshot = await getDocs(q);
 
         const fetchedProducts = [];
-        querySnapshot.forEach((doc) => {
-          fetchedProducts.push({ id: doc.id, ...doc.data() });
+        querySnapshot.forEach((docSnap) => {
+          fetchedProducts.push({ id: docSnap.id, ...docSnap.data() });
         });
 
         setProducts(fetchedProducts);
@@ -82,7 +88,6 @@ const FarmerDashboard = () => {
     fetchProducts();
   }, []);
 
-  // Update the current date and time every second
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentDateTime(new Date().toLocaleString());
@@ -90,18 +95,16 @@ const FarmerDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle deletion of product
   const handleDelete = async (productId) => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
       await deleteDoc(doc(db, "products", productId));
-      setProducts(products.filter((product) => product.id !== productId));
+      setProducts((prev) => prev.filter((product) => product.id !== productId));
     } catch (error) {
       console.error("Error deleting product:", error);
     }
   };
 
-  // Handle crop price prediction
   const handlePredictPrices = async () => {
     if (!selectedCrop.trim()) {
       alert("Please enter a crop name for prediction.");
@@ -113,12 +116,10 @@ const FarmerDashboard = () => {
       setPredictionError(null);
       setPredictionData(null);
 
-      const response = await fetch(`https://predictprice.onrender.com/predict`, {
+      const response = await fetch("https://predictprice.onrender.com/predict", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ crop: selectedCrop.trim() })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ crop: selectedCrop.trim() }),
       });
 
       const data = await response.json();
@@ -132,11 +133,7 @@ const FarmerDashboard = () => {
         new Date(today.getTime() + i * 86400000).toLocaleDateString()
       );
 
-      setPredictionData({
-        crop: selectedCrop.trim(),
-        prices: data.predicted_prices,
-        dates: next7Dates,
-      });
+      setPredictionData({ crop: selectedCrop.trim(), prices: data.predicted_prices, dates: next7Dates });
     } catch (error) {
       console.error("Prediction error:", error);
       setPredictionError("Failed to fetch prediction.");
@@ -145,37 +142,25 @@ const FarmerDashboard = () => {
     }
   };
 
-  // Prepare data for the chart (predicted prices)
   const chartData = {
     labels: predictionData ? predictionData.dates : [],
     datasets: [
       {
         label: `Predicted Price for ${selectedCrop}`,
-        data: predictionData ? predictionData.prices.map((price) => price.toFixed(2)) : [],
-        fill: false,
+        data: predictionData ? predictionData.prices.map((p) => parseFloat(p.toFixed(2))) : [],
         borderColor: "rgb(75, 192, 192)",
         tension: 0.1,
+        fill: false,
       },
     ],
   };
 
-  // Filter the crop prices based on user input
   const filteredData = allCropPrices.filter(
-    (p) =>
-      p.crop.toLowerCase().includes(filter.toLowerCase()) ||
-      p.market.toLowerCase().includes(filter.toLowerCase())
+    (p) => p.crop.toLowerCase().includes(filter.toLowerCase()) || p.market.toLowerCase().includes(filter.toLowerCase())
   );
 
-  // Paginate the filtered data
-  const currentData = filteredData.slice(
-    (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage
-  );
-
-  const currentProductData = products.slice(
-    (productPage - 1) * productsPerPage,
-    productPage * productsPerPage
-  );
+  const currentData = filteredData.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage);
+  const currentProductData = products.slice((productPage - 1) * productsPerPage, productPage * productsPerPage);
 
   if (loading) return <div>Loading real-time crop prices...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -226,15 +211,19 @@ const FarmerDashboard = () => {
                 {predictionData.dates.map((date, index) => (
                   <tr key={index}>
                     <td>{date}</td>
-                    <td>₹ {predictionData.prices[index].toFixed(2)}</td>
+                    <td>₹ {parseFloat(predictionData.prices[index]).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-
-            {/* Graph for Predicted Prices */}
             <div style={{ marginTop: "20px" }}>
-              <Line data={chartData} options={{ responsive: true, plugins: { title: { display: true, text: "Predicted Prices for Next 7 Days" } } }} />
+              <Line
+                data={chartData}
+                options={{
+                  responsive: true,
+                  plugins: { title: { display: true, text: "Predicted Prices for Next 7 Days" } },
+                }}
+              />
             </div>
           </div>
         )}
@@ -262,7 +251,6 @@ const FarmerDashboard = () => {
             ))}
           </tbody>
         </table>
-
         <div className="pagination">
           <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}>
             Previous
@@ -303,7 +291,6 @@ const FarmerDashboard = () => {
             ))}
           </tbody>
         </table>
-
         <div className="pagination">
           <button onClick={() => setProductPage((p) => Math.max(p - 1, 1))} disabled={productPage === 1}>
             Previous
