@@ -62,26 +62,41 @@ const Orders = () => {
         <p>No orders found.</p>
       ) : (
         <div className="orders-list">
-          {orders.map((order) => (
-            <div className="order-card" key={order.id}>
-              {order.image && (
-                <img src={order.image} alt={order.name} className="order-image" />
-              )}
-              <div className="order-details">
-                <h3>{order.crop}</h3>
-                <p>Quantity: {order.quantity}</p>
-                <p>Price: ₹{order.price}</p>
-                <p>Status: <strong>{order.status || "Pending"}</strong></p>
+          {orders.map((order) => {
+            const displayPrice =
+              order.price && order.price > 0
+                ? `₹${order.price}${order.unit ? "/" + order.unit : ""}`
+                : "Not available";
 
-                {user.role === "farmer" && (
-                  <div className="status-buttons">
-                    <button onClick={() => updateStatus(order.id, "In Transit")}>Mark In Transit</button>
-                    <button onClick={() => updateStatus(order.id, "Delivered")}>Mark Delivered</button>
-                  </div>
+            return (
+              <div className="order-card" key={order.id}>
+                {order.image && (
+                  <img
+                    src={order.image}
+                    alt={order.name || order.crop}
+                    className="order-image"
+                  />
                 )}
+                <div className="order-details">
+                  <h3>{order.crop}</h3>
+                  <p>Quantity: {order.quantity}</p>
+                  <p>Price: {displayPrice}</p>
+                  <p>Status: <strong>{order.status || "Pending"}</strong></p>
+
+                  {user.role === "farmer" && (
+                    <div className="status-buttons">
+                      <button onClick={() => updateStatus(order.id, "In Transit")}>
+                        Mark In Transit
+                      </button>
+                      <button onClick={() => updateStatus(order.id, "Delivered")}>
+                        Mark Delivered
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
