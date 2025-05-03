@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { collection, addDoc } from "firebase/firestore";
+import { useAuth } from "../auth"; // Custom hook for current user
 import { db } from "../firebase";
-import { doc, updateDoc } from "firebase/firestore";
-import { useAuth } from "../auth"; // Custom hook for current user (create if needed)
 import "./Products.css";
 
 const products = [
@@ -39,23 +37,24 @@ const products = [
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const user = useAuth(); // assumes user has uid
-  const navigate = useNavigate(); // Use navigate hook for routing
+  const user = useAuth(); // Custom hook that returns the user
 
   const categories = ["All", "Grains", "Vegetables", "Root Vegetables", "Pulses", "Leafy Greens"];
   
-  // Filtered products based on search term and selected category
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (selectedCategory === "All" || product.category === selectedCategory)
   );
 
+  // Add product to Firestore cart
   const addToCart = async (product) => {
-    if (!user) return alert("Login required.");
+    if (!user) return alert("Login required");
+
     try {
-      await addDoc(collection(db, "carts"), {
+      const cartRef = collection(db, "carts", user.uid, "items");
+      await addDoc(cartRef, {
         ...product,
-        userId: user.uid,
+        quantity: 1,
         addedAt: new Date(),
       });
       alert("✅ Added to cart!");
@@ -63,11 +62,6 @@ const Products = () => {
       console.error("Failed to add to cart:", err);
       alert("❌ Failed to add.");
     }
-  };
-
-  // Navigate to cart page
-  const goToCart = () => {
-    navigate("/cart"); // Assuming the route to cart page is '/cart'
   };
 
   return (
@@ -103,10 +97,6 @@ const Products = () => {
           </div>
         ))}
       </div>
-      {/* Button to navigate to the Cart page */}
-      <button className="go-to-cart-btn" onClick={goToCart}>
-        Go to Cart
-      </button>
     </div>
   );
 };
