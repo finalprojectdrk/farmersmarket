@@ -76,18 +76,18 @@ const Checkout = () => {
 
       await Promise.all(
         cart.map(async (item) => {
-          await addDoc(collection(db, "supplyChainOrders"), {
-            buyer: details.name,
-            contact: details.contact,
-            address: details.address,
-            payment: details.payment,
-            crop: item.name,
-            farmer: item.farmer || "Not Assigned",
-            location,
-            status: "Pending",
-            transport: "Not Assigned",
-            createdAt: new Date(),
-          });
+                  await addDoc(collection(db, "supplyChainOrders"), {
+  ...details,
+  buyer: details.name,         // display name
+  buyerId: user.uid,           // UID
+  crop: item.name,
+  farmer: item.farmer,
+  location,
+  status: "Pending",
+  transport: "Not Assigned",
+  createdAt: new Date(),
+});
+
 
           if (typeof item.id === "string") {
             await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
