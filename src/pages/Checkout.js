@@ -78,7 +78,6 @@ const Checkout = () => {
             buyer: details.name,
             buyerId: user.uid, // Store UID for buyer
             crop: item.name,
-            farmer: item.farmer,
             location,
             status: "Pending", // Order initially in "Pending" state
             transport: "Not Assigned",
