@@ -98,7 +98,7 @@ const SupplyChain = () => {
                         lat: order.originLocation.latitude,
                         lng: order.originLocation.longitude,
                       }}
-                      label="Farmer"
+                      label={{ text: order.farmer || "Farmer", color: "white" }}
                       icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
                     />
                   )}
@@ -108,7 +108,7 @@ const SupplyChain = () => {
                         lat: order.location.latitude,
                         lng: order.location.longitude,
                       }}
-                      label="Buyer"
+                      label={{ text: order.buyer || "Buyer", color: "white" }}
                       icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
                     />
                   )}
@@ -152,15 +152,13 @@ const SupplyChain = () => {
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id}>
-                  <td>{order.crop}</td>
-                  <td>{order.buyer}</td>
+                  <td>{order.crop || "-"}</td>
+                  <td>{order.buyer || "-"}</td>
                   <td style={styles.status[order.status] || {}}>{order.status}</td>
                   <td>
                     <select
                       value={order.status}
-                      onChange={(e) =>
-                        updateOrderStatus(order.id, e.target.value)
-                      }
+                      onChange={(e) => updateOrderStatus(order.id, e.target.value)}
                     >
                       <option value="Pending">Pending</option>
                       <option value="In Transit">In Transit</option>
