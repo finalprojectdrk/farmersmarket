@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { LoadScript } from "@react-google-maps/api";
 import "./Checkout.css";
+
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -42,10 +45,10 @@ const Checkout = () => {
     try {
       const coords = await getCoordinatesFromAddress(details.address);
       setLocation(coords);
-      alert("Location fetched successfully!");
+      alert("📍 Location fetched successfully!");
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch location.");
+      alert("❌ Failed to fetch location.");
     }
   };
 
@@ -81,30 +84,32 @@ const Checkout = () => {
   };
 
   return (
-    <div className="checkout-container">
-      <h2>🧾 Checkout</h2>
-      <input type="text" name="name" placeholder="Full Name" onChange={handleChange} required />
-      <input type="text" name="address" placeholder="Delivery Address" onChange={handleChange} required />
-      <input type="text" name="contact" placeholder="Contact Number" onChange={handleChange} required />
-      
-      <select name="payment" onChange={handleChange}>
-        <option value="COD">Cash on Delivery</option>
-        <option value="UPI">UPI Payment</option>
-        <option value="Card">Debit/Credit Card</option>
-      </select>
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+      <div className="checkout-container">
+        <h2>🧾 Checkout</h2>
+        <input type="text" name="name" placeholder="Full Name" onChange={handleChange} required />
+        <input type="text" name="address" placeholder="Delivery Address" onChange={handleChange} required />
+        <input type="text" name="contact" placeholder="Contact Number" onChange={handleChange} required />
+        
+        <select name="payment" onChange={handleChange}>
+          <option value="COD">Cash on Delivery</option>
+          <option value="UPI">UPI Payment</option>
+          <option value="Card">Debit/Credit Card</option>
+        </select>
 
-      <button onClick={handleLocation} className="location-button">
-        📍 Get Location
-      </button>
+        <button onClick={handleLocation} className="location-button">
+          📍 Get Location
+        </button>
 
-      <button
-        onClick={handleOrderConfirm}
-        className="confirm-button"
-        disabled={loading}
-      >
-        {loading ? "Placing Order..." : "Confirm Order"}
-      </button>
-    </div>
+        <button
+          onClick={handleOrderConfirm}
+          className="confirm-button"
+          disabled={loading}
+        >
+          {loading ? "Placing Order..." : "Confirm Order"}
+        </button>
+      </div>
+    </LoadScript>
   );
 };
 
