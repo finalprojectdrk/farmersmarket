@@ -2,53 +2,44 @@ import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from "../auth";
-import "./Orders.css";
 
 const Orders = () => {
   const user = useAuth();
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-      console.log("User not logged in");
-      return;
-    }
+    if (!user) return;
 
-    const ordersRef = collection(db, "supplyChainOrders");
-    const q = query(ordersRef, where("buyerId", "==", user.uid)); // ✅ Match on UID
-
+    const q = query(collection(db, "orders"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setOrders(ordersData);
-      setLoading(false);
+      const updatedOrders = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setOrders(updatedOrders);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribe(); // Cleanup listener on unmount
   }, [user]);
-
-  if (loading) {
-    return <div>Loading orders...</div>;
-  }
 
   return (
     <div className="orders-container">
       <h2>Your Orders</h2>
       {orders.length === 0 ? (
-        <p>No orders found.</p>
+        <p>No orders placed yet.</p>
       ) : (
-        <div className="orders-list">
+        <div>
           {orders.map((order) => (
-            <div key={order.id} className="order-card">
-              <h3>{order.crop}</h3>
-              <p>Farmer: {order.farmer}</p>
+            <div className="order-card" key={order.id}>
+              <h3>Order {order.id}</h3>
+              <ul>
+                {order.items.map((item, index) => (
+                  <li key={index}>
+                    {item.name} - ₹{item.price}/kg
+                  </li>
+                ))}
+              </ul>
               <p>Status: {order.status}</p>
-              <p>
-                Created At:{" "}
-                {order.createdAt?.seconds
-                  ? new Date(order.createdAt.seconds * 1000).toLocaleDateString()
-                  : "N/A"}
-              </p>
             </div>
           ))}
         </div>
