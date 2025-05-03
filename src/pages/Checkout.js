@@ -14,7 +14,7 @@ import "./Checkout.css";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
-const Checkout = () => {
+const CheckoutForm = () => {
   const navigate = useNavigate();
   const [details, setDetails] = useState({
     name: "",
@@ -28,14 +28,14 @@ const Checkout = () => {
   const user = useAuth();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
 
     const cartRef = collection(db, "carts", user.uid, "items");
     const unsubscribe = onSnapshot(cartRef, (snapshot) => {
       const items = snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
         return {
-          id: docSnap.id, // Firestore doc ID
+          id: docSnap.id,
           name: data.name || "Unnamed",
           price: data.price || 0,
           quantity: data.quantity || 1,
@@ -74,6 +74,7 @@ const Checkout = () => {
       setLocation(coords);
       alert("📍 Location set!");
     } catch (err) {
+      console.error(err);
       alert("❌ Failed to get location");
     }
   };
@@ -83,7 +84,9 @@ const Checkout = () => {
       return alert("Please fill all fields");
     if (!location.latitude) return alert("Please fetch location");
     if (cart.length === 0) return alert("Cart is empty!");
+    if (!user?.uid) return alert("User not logged in");
 
+    console.log("Placing order for user:", user.uid);
     setLoading(true);
 
     try {
@@ -91,7 +94,7 @@ const Checkout = () => {
         cart.map(async (item) => {
           await addDoc(collection(db, "supplyChainOrders"), {
             buyer: details.name,
-            buyerId: user?.uid,
+            buyerId: user.uid,
             crop: item.name,
             location,
             status: "Pending",
@@ -102,13 +105,8 @@ const Checkout = () => {
             price: item.price,
           });
 
-          // Ensure deletion works using correct Firestore path
-          if (item.id) {
-            const cartItemRef = doc(db, "carts", user.uid, "items", item.id);
-            await deleteDoc(cartItemRef);
-          } else {
-            console.warn("Missing item.id for cart item:", item);
-          }
+          const cartItemRef = doc(db, "carts", user.uid, "items", item.id);
+          await deleteDoc(cartItemRef);
         })
       );
       alert("✅ Orders placed!");
@@ -122,34 +120,38 @@ const Checkout = () => {
   };
 
   return (
-    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-      <div className="checkout-container">
-        <h2>🧾 Checkout</h2>
-        <input name="name" placeholder="Name" onChange={handleChange} required />
-        <input name="address" placeholder="Delivery Address" onChange={handleChange} required />
-        <input name="contact" placeholder="Contact" onChange={handleChange} required />
-        <select name="payment" onChange={handleChange}>
-          <option value="COD">Cash on Delivery</option>
-          <option value="UPI">UPI</option>
-        </select>
-        <button onClick={handleLocation}>📍 Get Location</button>
-        <button onClick={handleOrderConfirm} disabled={loading}>
-          {loading ? "Placing..." : "Confirm Order"}
-        </button>
+    <div className="checkout-container">
+      <h2>🧾 Checkout</h2>
+      <input name="name" placeholder="Name" onChange={handleChange} required />
+      <input name="address" placeholder="Delivery Address" onChange={handleChange} required />
+      <input name="contact" placeholder="Contact" onChange={handleChange} required />
+      <select name="payment" onChange={handleChange}>
+        <option value="COD">Cash on Delivery</option>
+        <option value="UPI">UPI</option>
+      </select>
+      <button onClick={handleLocation}>📍 Get Location</button>
+      <button onClick={handleOrderConfirm} disabled={loading}>
+        {loading ? "Placing..." : "Confirm Order"}
+      </button>
 
-        <div className="cart-summary">
-          <h3>Cart Summary</h3>
-          <ul>
-            {cart.map((item) => (
-              <li key={item.id}>
-                {item.name} - ₹{item.price} x {item.quantity}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="cart-summary">
+        <h3>Cart Summary</h3>
+        <ul>
+          {cart.map((item) => (
+            <li key={item.id}>
+              {item.name} - ₹{item.price} x {item.quantity}
+            </li>
+          ))}
+        </ul>
       </div>
-    </LoadScript>
+    </div>
   );
 };
+
+const Checkout = () => (
+  <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+    <CheckoutForm />
+  </LoadScript>
+);
 
 export default Checkout;
