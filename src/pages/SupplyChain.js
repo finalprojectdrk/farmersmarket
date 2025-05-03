@@ -18,7 +18,7 @@ const SupplyChain = () => {
   const [directions, setDirections] = useState({});
   const [loading, setLoading] = useState(true);
 
-  const apiKey = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with your key
+  const apiKey = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
 
   // Fetch orders and geocode
   useEffect(() => {
