@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { db } from "../firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, onSnapshot, deleteDoc, doc, addDoc } from "firebase/firestore";
 import { LoadScript } from "@react-google-maps/api";
+import { db } from "../firebase";
+import { useAuth } from "../auth"; // Custom hook for current user
 import "./Checkout.css";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
@@ -14,10 +15,19 @@ const Checkout = () => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const user = useAuth(); // Custom hook that returns the user
+
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("orders")) || [];
-    setCart(stored);
-  }, []);
+    if (!user) return;
+
+    const cartRef = collection(db, "carts", user.uid, "items");
+    const unsubscribe = onSnapshot(cartRef, (snapshot) => {
+      const items = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setCart(items);
+    });
+
+    return () => unsubscribe(); // Cleanup subscription when component unmounts
+  }, [user]);
 
   const getCoordinatesFromAddress = async (address) => {
     const geocoder = new window.google.maps.Geocoder();
@@ -50,47 +60,38 @@ const Checkout = () => {
     }
   };
 
-  const handleRemove = (index) => {
-    const updated = [...cart];
-    updated.splice(index, 1);
-    setCart(updated);
-    localStorage.setItem("orders", JSON.stringify(updated));
-  };
-
-  const calculateTotal = () => {
-    return cart.reduce((sum, item) => {
-      const price = parseFloat(item.price.replace(/[₹\/kg]/g, ""));
-      return sum + price;
-    }, 0);
-  };
-
   const handleOrderConfirm = async () => {
     if (!details.name || !details.address || !details.contact) return alert("Please fill all fields");
     if (!location.latitude) return alert("Please fetch location");
+    if (cart.length === 0) return alert("Cart is empty!");
 
     setLoading(true);
+
     try {
       await Promise.all(
-        cart.map((item) =>
-          addDoc(collection(db, "supplyChainOrders"), {
+        cart.map(async (item) => {
+          await addDoc(collection(db, "supplyChainOrders"), {
             ...details,
             buyer: details.name,
             crop: item.name,
-            farmer: item.farmer || "Unknown", // in case farmer info missing
+            farmer: item.farmer,
             location,
             status: "Pending",
             transport: "Not Assigned",
             createdAt: new Date(),
-          })
-        )
+          });
+
+          // Delete item from cart after order
+          await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
+        })
       );
-      localStorage.removeItem("orders");
       alert("✅ Orders placed!");
       navigate("/products");
     } catch (e) {
       console.error(e);
       alert("❌ Order failed");
     }
+
     setLoading(false);
   };
 
@@ -98,37 +99,27 @@ const Checkout = () => {
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
       <div className="checkout-container">
         <h2>🧾 Checkout</h2>
-
-        <input name="name" placeholder="Name" onChange={handleChange} value={details.name} required />
-        <input name="address" placeholder="Delivery Address" onChange={handleChange} value={details.address} required />
-        <input name="contact" placeholder="Contact" onChange={handleChange} value={details.contact} required />
-        <select name="payment" onChange={handleChange} value={details.payment}>
+        <input name="name" placeholder="Name" onChange={handleChange} required />
+        <input name="address" placeholder="Delivery Address" onChange={handleChange} required />
+        <input name="contact" placeholder="Contact" onChange={handleChange} required />
+        <select name="payment" onChange={handleChange}>
           <option value="COD">Cash on Delivery</option>
           <option value="UPI">UPI</option>
         </select>
-
         <button onClick={handleLocation}>📍 Get Location</button>
-
-        <div className="cart-summary">
-          <h3>🛒 Your Cart</h3>
-          {cart.length === 0 ? (
-            <p>No items in cart.</p>
-          ) : (
-            <ul>
-              {cart.map((item, index) => (
-                <li key={index}>
-                  <span>{item.name} - {item.price}</span>
-                  <button className="remove-btn" onClick={() => handleRemove(index)}>❌ Remove</button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p><strong>Total:</strong> ₹{calculateTotal()}</p>
-        </div>
-
-        <button onClick={handleOrderConfirm} disabled={loading || cart.length === 0}>
-          {loading ? "Placing..." : "✅ Confirm Order"}
+        <button onClick={handleOrderConfirm} disabled={loading}>
+          {loading ? "Placing..." : "Confirm Order"}
         </button>
+        <div className="cart-summary">
+          <h3>Cart Summary</h3>
+          <ul>
+            {cart.map((item) => (
+              <li key={item.id}>
+                {item.name} - ₹{item.price} x {item.quantity}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </LoadScript>
   );
