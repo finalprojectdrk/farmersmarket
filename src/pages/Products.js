@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth"; // Custom hook for current user
@@ -42,19 +42,31 @@ const Products = () => {
   const navigate = useNavigate();
 
   const categories = ["All", "Grains", "Vegetables", "Root Vegetables", "Pulses", "Leafy Greens"];
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (selectedCategory === "All" || product.category === selectedCategory)
+
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      (selectedCategory === "All" || product.category === selectedCategory)
   );
 
   const addToCart = async (product) => {
     if (!user) return alert("Login required.");
+
     try {
-      await addDoc(collection(db, "carts"), {
-        ...product,
+      const docRef = await addDoc(collection(db, "carts"), {
+        name: product.name,
+        price: product.price,
+        category: product.category,
+        image: product.image,
         userId: user.uid,
         addedAt: new Date(),
       });
+
+      // ✅ Update item to include the generated ID
+      await updateDoc(doc(db, "carts", docRef.id), {
+        id: docRef.id,
+      });
+
       alert("✅ Added to cart!");
     } catch (err) {
       console.error("Failed to add to cart:", err);
@@ -102,7 +114,9 @@ const Products = () => {
             <img src={product.image} alt={product.name} className="product-image" />
             <h3>{product.name}</h3>
             <p>{product.price}</p>
-            <button className="buy-button" onClick={() => addToCart(product)}>Add to Cart</button>
+            <button className="buy-button" onClick={() => addToCart(product)}>
+              Add to Cart
+            </button>
           </div>
         ))}
       </div>
