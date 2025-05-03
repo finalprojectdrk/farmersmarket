@@ -18,10 +18,9 @@ const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replac
 const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [transportLocations, setTransportLocations] = useState({}); // Holds selected transport points
-  const [farmerLocation, setFarmerLocation] = useState({});
-  const [transportLocation, setTransportLocation] = useState({});
-  
+  const [farmerLocation, setFarmerLocation] = useState({}); // Holds selected farmer location
+  const [manualLocation, setManualLocation] = useState(""); // Holds manual farmer location input
+
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "supplyChainOrders"), (querySnapshot) => {
       const fetched = querySnapshot.docs.map((doc) => ({
@@ -46,29 +45,22 @@ const SupplyChain = () => {
     }
   };
 
-  const assignTransport = async (orderId, lat, lng) => {
+  // Update farmer's location in Firestore
+  const updateFarmerLocation = async (orderId, lat, lng) => {
     try {
       await updateDoc(doc(db, "supplyChainOrders", orderId), {
-        transportLocation: { latitude: lat, longitude: lng },
-        transport: "Assigned",
+        originLocation: { latitude: lat, longitude: lng },
       });
-      setTransportLocations((prev) => ({
-        ...prev,
-        [orderId]: { lat, lng },
-      }));
-      alert("Transport assigned");
+      alert("Farmer location updated");
     } catch (error) {
-      console.error("Failed to assign transport", error);
+      console.error("Failed to update farmer location", error);
     }
   };
 
-  const handleLocationInput = (address, type) => {
+  const handleLocationInput = (address, orderId) => {
     getCoordinatesFromAddress(address).then((location) => {
-      if (type === "farmer") {
-        setFarmerLocation(location);
-      } else if (type === "transport") {
-        setTransportLocation(location);
-      }
+      setFarmerLocation(location);
+      updateFarmerLocation(orderId, location.lat, location.lng);
     });
   };
 
@@ -94,10 +86,22 @@ const SupplyChain = () => {
     }
   };
 
-  const handleMapClick = (orderId, e) => {
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
-    assignTransport(orderId, lat, lng);
+  const handleGetLocation = (orderId) => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setFarmerLocation({ lat: latitude, lng: longitude });
+          updateFarmerLocation(orderId, latitude, longitude);
+        },
+        (error) => {
+          console.error("Error detecting location:", error);
+          alert("Unable to detect location, please enter it manually.");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by this browser.");
+    }
   };
 
   const renderPolyline = (order) => {
@@ -171,8 +175,6 @@ const SupplyChain = () => {
                   {renderPolyline(order)}
                 </React.Fragment>
               ))}
-
-              <GoogleMap onClick={(e) => handleMapClick("selectedOrderId", e)} />
             </GoogleMap>
           </LoadScript>
 
@@ -203,24 +205,19 @@ const SupplyChain = () => {
                       <option value="Shipped">Shipped</option>
                       <option value="Delivered">Delivered</option>
                     </select>
+                    <button onClick={() => handleGetLocation(order.id)}>Get Farmer Location</button>
+                    <input
+                      type="text"
+                      placeholder="Enter Farmer Location"
+                      value={manualLocation}
+                      onChange={(e) => setManualLocation(e.target.value)}
+                      onBlur={() => handleLocationInput(manualLocation, order.id)}
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-
-          <div style={styles.locationInputContainer}>
-            <input
-              type="text"
-              placeholder="Enter Farmer Location"
-              onBlur={(e) => handleLocationInput(e.target.value, "farmer")}
-            />
-            <input
-              type="text"
-              placeholder="Enter Transport Location"
-              onBlur={(e) => handleLocationInput(e.target.value, "transport")}
-            />
-          </div>
         </>
       )}
     </div>
@@ -249,11 +246,6 @@ const styles = {
     "In Transit": { color: "orange", fontWeight: "bold" },
     Shipped: { color: "blue", fontWeight: "bold" },
     Delivered: { color: "green", fontWeight: "bold" },
-  },
-  locationInputContainer: {
-    marginTop: "20px",
-    display: "flex",
-    justifyContent: "space-between",
   },
 };
 
