@@ -2,16 +2,7 @@ import React, { useState, useEffect } from "react";
 import { db, auth } from "../firebase";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { Line } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
 import "./FarmerDashboard.css";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -74,8 +65,8 @@ const FarmerDashboard = () => {
         const querySnapshot = await getDocs(q);
 
         const fetchedProducts = [];
-        querySnapshot.forEach((docSnap) => {
-          fetchedProducts.push({ id: docSnap.id, ...docSnap.data() });
+        querySnapshot.forEach((doc) => {
+          fetchedProducts.push({ id: doc.id, ...doc.data() });
         });
 
         setProducts(fetchedProducts);
@@ -99,7 +90,7 @@ const FarmerDashboard = () => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
       await deleteDoc(doc(db, "products", productId));
-      setProducts((prev) => prev.filter((product) => product.id !== productId));
+      setProducts(products.filter((product) => product.id !== productId));
     } catch (error) {
       console.error("Error deleting product:", error);
     }
@@ -116,16 +107,15 @@ const FarmerDashboard = () => {
       setPredictionError(null);
       setPredictionData(null);
 
-      const response = await fetch("https://predictprice.onrender.com/predict", {
+      const response = await fetch(`https://predictprice.onrender.com/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ crop: selectedCrop.trim() }),
       });
 
       const data = await response.json();
-      if (data.error) {
-        setPredictionError(data.error);
-        return;
+      if (data.error || !Array.isArray(data.predicted_prices)) {
+        throw new Error(data.error || "Invalid prediction response");
       }
 
       const today = new Date();
@@ -133,7 +123,11 @@ const FarmerDashboard = () => {
         new Date(today.getTime() + i * 86400000).toLocaleDateString()
       );
 
-      setPredictionData({ crop: selectedCrop.trim(), prices: data.predicted_prices, dates: next7Dates });
+      setPredictionData({
+        crop: selectedCrop.trim(),
+        prices: data.predicted_prices,
+        dates: next7Dates,
+      });
     } catch (error) {
       console.error("Prediction error:", error);
       setPredictionError("Failed to fetch prediction.");
@@ -147,20 +141,31 @@ const FarmerDashboard = () => {
     datasets: [
       {
         label: `Predicted Price for ${selectedCrop}`,
-        data: predictionData ? predictionData.prices.map((p) => parseFloat(p.toFixed(2))) : [],
+        data: predictionData
+          ? predictionData.prices.map((p) => (typeof p === "number" ? parseFloat(p.toFixed(2)) : 0))
+          : [],
+        fill: false,
         borderColor: "rgb(75, 192, 192)",
         tension: 0.1,
-        fill: false,
       },
     ],
   };
 
   const filteredData = allCropPrices.filter(
-    (p) => p.crop.toLowerCase().includes(filter.toLowerCase()) || p.market.toLowerCase().includes(filter.toLowerCase())
+    (p) =>
+      p.crop.toLowerCase().includes(filter.toLowerCase()) ||
+      p.market.toLowerCase().includes(filter.toLowerCase())
   );
 
-  const currentData = filteredData.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage);
-  const currentProductData = products.slice((productPage - 1) * productsPerPage, productPage * productsPerPage);
+  const currentData = filteredData.slice(
+    (currentPage - 1) * recordsPerPage,
+    currentPage * recordsPerPage
+  );
+
+  const currentProductData = products.slice(
+    (productPage - 1) * productsPerPage,
+    productPage * productsPerPage
+  );
 
   if (loading) return <div>Loading real-time crop prices...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -211,17 +216,28 @@ const FarmerDashboard = () => {
                 {predictionData.dates.map((date, index) => (
                   <tr key={index}>
                     <td>{date}</td>
-                    <td>₹ {parseFloat(predictionData.prices[index]).toFixed(2)}</td>
+                    <td>
+                      ₹{" "}
+                      {predictionData.prices[index] !== undefined
+                        ? parseFloat(predictionData.prices[index]).toFixed(2)
+                        : "N/A"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
             <div style={{ marginTop: "20px" }}>
               <Line
                 data={chartData}
                 options={{
                   responsive: true,
-                  plugins: { title: { display: true, text: "Predicted Prices for Next 7 Days" } },
+                  plugins: {
+                    title: {
+                      display: true,
+                      text: "Predicted Prices for Next 7 Days",
+                    },
+                  },
                 }}
               />
             </div>
@@ -251,6 +267,7 @@ const FarmerDashboard = () => {
             ))}
           </tbody>
         </table>
+
         <div className="pagination">
           <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}>
             Previous
@@ -291,6 +308,7 @@ const FarmerDashboard = () => {
             ))}
           </tbody>
         </table>
+
         <div className="pagination">
           <button onClick={() => setProductPage((p) => Math.max(p - 1, 1))} disabled={productPage === 1}>
             Previous
