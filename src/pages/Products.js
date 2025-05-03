@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { useAuth } from "../auth"; // Custom hook for current user (create if needed)
+import { useAuth } from "/auth"; // Custom hook for current user (create if needed)
 import "./Products.css";
 
 const products = [
