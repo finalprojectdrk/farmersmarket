@@ -14,8 +14,7 @@ const Checkout = () => {
   const [location, setLocation] = useState({ latitude: null, longitude: null });
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const user = useAuth(); // Custom hook that returns the user
+  const user = useAuth();
 
   useEffect(() => {
     if (!user) return;
@@ -26,7 +25,7 @@ const Checkout = () => {
       setCart(items);
     });
 
-    return () => unsubscribe(); // Cleanup
+    return () => unsubscribe();
   }, [user]);
 
   const getCoordinatesFromAddress = async (address) => {
@@ -61,46 +60,33 @@ const Checkout = () => {
   };
 
   const handleOrderConfirm = async () => {
-    if (!details.name || !details.address || !details.contact) {
-      return alert("Please fill all fields");
-    }
-    if (!location.latitude || !location.longitude) {
-      return alert("Please fetch location");
-    }
+    if (!details.name || !details.address || !details.contact) return alert("Please fill all fields");
+    if (!location.latitude) return alert("Please fetch location");
     if (cart.length === 0) return alert("Cart is empty!");
 
     setLoading(true);
 
     try {
-      console.log("Cart items:", cart);
-
       await Promise.all(
         cart.map(async (item) => {
-                  await addDoc(collection(db, "supplyChainOrders"), {
-  ...details,
-  buyer: details.name,         // display name
-  buyerId: user.uid,           // UID
-  crop: item.name,
-  farmer: item.farmer,
-  location,
-  status: "Pending",
-  transport: "Not Assigned",
-  createdAt: new Date(),
-});
+          await addDoc(collection(db, "supplyChainOrders"), {
+            buyer: details.name,
+            buyerId: user.uid, // ✅ store UID for buyer
+            crop: item.name,
+            farmer: item.farmer,
+            location,
+            status: "Pending",
+            transport: "Not Assigned",
+            createdAt: new Date(),
+          });
 
-
-          if (typeof item.id === "string") {
-            await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
-          } else {
-            console.warn("Skipping item with invalid ID:", item);
-          }
+          await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
         })
       );
-
       alert("✅ Orders placed!");
       navigate("/products");
     } catch (e) {
-      console.error("Order failed:", e);
+      console.error(e);
       alert("❌ Order failed");
     }
 
@@ -128,7 +114,7 @@ const Checkout = () => {
           <ul>
             {cart.map((item) => (
               <li key={item.id}>
-                {item.name} - ₹{item.price} x {item.quantity || 1}
+                {item.name} - ₹{item.price} x {item.quantity}
               </li>
             ))}
           </ul>
