@@ -14,7 +14,7 @@ import { useAuth } from "../auth";
 import { GoogleMap, Marker, LoadScript } from "@react-google-maps/api";
 import "./Orders.css";
 
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE"; // Replace this
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace this
 
 const mapContainerStyle = {
   width: "100%",
