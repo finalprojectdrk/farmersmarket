@@ -16,11 +16,19 @@ const Orders = () => {
     const unsubscribe = onSnapshot(
       ordersRef,
       (snapshot) => {
-        const orderList = snapshot.docs?.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) || [];
-        setOrders(orderList);
+        // Log the snapshot to see the data structure
+        console.log("Snapshot:", snapshot);
+        
+        // Check if snapshot and snapshot.docs exist before mapping
+        if (snapshot && snapshot.docs) {
+          const orderList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setOrders(orderList);
+        } else {
+          console.warn("No documents found in snapshot");
+        }
       },
       (error) => {
         console.error("Error fetching orders:", error);
