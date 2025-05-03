@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-
 import { useNavigate } from "react-router-dom";
 import {
   collection,
@@ -7,6 +6,7 @@ import {
   deleteDoc,
   doc,
   addDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { LoadScript } from "@react-google-maps/api";
 import { db } from "../firebase";
@@ -14,6 +14,10 @@ import { useAuth } from "../auth";
 import "./Checkout.css";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
+
+const generateOrderId = () => {
+  return "ORD-" + Math.random().toString(36).substr(2, 9).toUpperCase();
+};
 
 const CheckoutForm = () => {
   const navigate = useNavigate();
@@ -80,6 +84,11 @@ const CheckoutForm = () => {
     }
   };
 
+  const sendNotification = (orderId) => {
+    console.log(`📩 Sending confirmation email & SMS for Order ID: ${orderId}`);
+    // Integrate with backend or external APIs like Twilio/SendGrid here
+  };
+
   const handleOrderConfirm = async () => {
     if (!details.name || !details.address || !details.contact) {
       return alert("Please fill all fields.");
@@ -94,13 +103,17 @@ const CheckoutForm = () => {
       return alert("User not logged in.");
     }
 
-    console.log("Placing order for user:", user.uid);
     setLoading(true);
-
     try {
+      const orderIds = [];
+
       await Promise.all(
         cart.map(async (item) => {
+          const orderId = generateOrderId();
+          orderIds.push(orderId);
+
           await addDoc(collection(db, "supplyChainOrders"), {
+            orderId,
             buyer: details.name,
             buyerId: user.uid,
             crop: item.name,
@@ -111,13 +124,16 @@ const CheckoutForm = () => {
             payment: details.payment,
             quantity: item.quantity || 1,
             price: item.price,
+            contact: details.contact,
           });
 
-          const cartItemRef = doc(db, "carts", user.uid, "items", item.id);
-          await deleteDoc(cartItemRef);
+          await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
+
+          sendNotification(orderId);
         })
       );
-      alert("✅ Orders placed!");
+
+      alert(`✅ Orders placed!\nYour Order IDs:\n${orderIds.join("\n")}`);
       navigate("/products");
     } catch (e) {
       console.error(e);
@@ -127,30 +143,18 @@ const CheckoutForm = () => {
     }
   };
 
+  const updateQuantity = async (itemId, newQty) => {
+    if (newQty < 1) return;
+    const itemRef = doc(db, "carts", user.uid, "items", itemId);
+    await updateDoc(itemRef, { quantity: newQty });
+  };
+
   return (
     <div className="checkout-container">
       <h2>🧾 Checkout</h2>
-      <input
-        name="name"
-        placeholder="Name"
-        onChange={handleChange}
-        required
-        value={details.name}
-      />
-      <input
-        name="address"
-        placeholder="Delivery Address"
-        onChange={handleChange}
-        required
-        value={details.address}
-      />
-      <input
-        name="contact"
-        placeholder="Contact"
-        onChange={handleChange}
-        required
-        value={details.contact}
-      />
+      <input name="name" placeholder="Name" onChange={handleChange} value={details.name} />
+      <input name="address" placeholder="Delivery Address" onChange={handleChange} value={details.address} />
+      <input name="contact" placeholder="Contact" onChange={handleChange} value={details.contact} />
       <select name="payment" onChange={handleChange} value={details.payment}>
         <option value="COD">Cash on Delivery</option>
         <option value="UPI">UPI</option>
@@ -165,7 +169,9 @@ const CheckoutForm = () => {
         <ul>
           {cart.map((item) => (
             <li key={item.id}>
-              {item.name} - ₹{item.price} x {item.quantity}
+              {item.name} - ₹{item.price} x {item.quantity}{" "}
+              <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
+              <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
             </li>
           ))}
         </ul>
@@ -181,4 +187,3 @@ const Checkout = () => (
 );
 
 export default Checkout;
-
