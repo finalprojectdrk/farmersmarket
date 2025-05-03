@@ -22,14 +22,6 @@ import RealTimePrices from "./pages/RealTimePrices";
 import Transactions from "./pages/Transactions";
 import { AuthProvider } from "./auth";
 
-ReactDOM.render(
-  <React.StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  </React.StrictMode>,
-  document.getElementById("root")
-);
 
 // Private Route Wrapper
 const PrivateRoute = ({ children, isLoggedIn }) => {
