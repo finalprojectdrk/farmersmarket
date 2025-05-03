@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { collection, onSnapshot, updateDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { useAuth } from "../auth";
+import { useAuth } from "../auth"; // Custom hook
+import "./Orders.css";
 
 const Orders = () => {
   const user = useAuth();
@@ -10,36 +11,53 @@ const Orders = () => {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(collection(db, "orders"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const updatedOrders = snapshot.docs.map((doc) => ({
+    const ordersRef = collection(db, "orders", user.uid, "items");
+    const unsubscribe = onSnapshot(ordersRef, (snapshot) => {
+      const orderList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      setOrders(updatedOrders);
+      setOrders(orderList);
     });
 
-    return () => unsubscribe(); // Cleanup listener on unmount
+    return () => unsubscribe();
   }, [user]);
+
+  const updateStatus = async (orderId, status) => {
+    try {
+      const orderDoc = doc(db, "orders", user.uid, "items", orderId);
+      await updateDoc(orderDoc, { status });
+      alert(`Status updated to ${status}`);
+    } catch (err) {
+      console.error("Failed to update status:", err);
+      alert("Error updating status.");
+    }
+  };
 
   return (
     <div className="orders-container">
       <h2>Your Orders</h2>
+
       {orders.length === 0 ? (
-        <p>No orders placed yet.</p>
+        <p>No orders found.</p>
       ) : (
-        <div>
+        <div className="orders-list">
           {orders.map((order) => (
             <div className="order-card" key={order.id}>
-              <h3>Order {order.id}</h3>
-              <ul>
-                {order.items.map((item, index) => (
-                  <li key={index}>
-                    {item.name} - ₹{item.price}/kg
-                  </li>
-                ))}
-              </ul>
-              <p>Status: {order.status}</p>
+              <img src={order.image} alt={order.name} className="order-image" />
+              <div className="order-details">
+                <h3>{order.name}</h3>
+                <p>Quantity: {order.quantity}</p>
+                <p>Total: ₹{order.total}</p>
+                <p>Status: <strong>{order.status || "Pending"}</strong></p>
+                {/* Optional: Let farmers update status */}
+                {user.role === "farmer" && (
+                  <div className="status-buttons">
+                    <button onClick={() => updateStatus(order.id, "In Transit")}>Mark In Transit</button>
+                    <button onClick={() => updateStatus(order.id, "Delivered")}>Mark Delivered</button>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
