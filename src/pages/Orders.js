@@ -8,13 +8,14 @@ import {
   where,
   getDocs,
   setDoc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../auth";
 import { GoogleMap, Marker, LoadScript } from "@react-google-maps/api";
 import "./Orders.css";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace this
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY_HERE";
 
 const mapContainerStyle = {
   width: "100%",
@@ -79,10 +80,27 @@ const Orders = () => {
 
   const updateTracking = async (orderId) => {
     try {
-      const value = trackingInputs[orderId];
-      const orderDoc = doc(db, "orders", orderId);
-      await updateDoc(orderDoc, { tracking: value });
+      const value = trackingInputs[orderId]?.trim();
+      if (!value) return alert("Enter tracking info.");
+
+      const orderDocRef = doc(db, "orders", orderId);
+      const orderSnap = await getDoc(orderDocRef);
+      const existingData = orderSnap.exists() ? orderSnap.data() : {};
+      const prevHistory = existingData.trackingHistory || [];
+
+      const newEntry = {
+        message: value,
+        timestamp: new Date(),
+      };
+
+      const updatedHistory = [...prevHistory, newEntry];
+
+      await updateDoc(orderDocRef, {
+        trackingHistory: updatedHistory,
+      });
+
       alert("Tracking updated");
+      setTrackingInputs((prev) => ({ ...prev, [orderId]: "" }));
     } catch (err) {
       console.error("Failed to update tracking:", err);
       alert("Error updating tracking info.");
@@ -121,17 +139,25 @@ const Orders = () => {
                     <p>Quantity: {order.quantity}</p>
                     <p>Price: {displayPrice}</p>
                     <p>Status: <strong>{order.status || "Pending"}</strong></p>
-                    <p>Tracking: <strong>{order.tracking || "Not available"}</strong></p>
+
+                    <p><strong>Tracking History:</strong></p>
+                    <ul className="tracking-history">
+                      {order.trackingHistory && order.trackingHistory.length > 0 ? (
+                        order.trackingHistory.map((entry, idx) => (
+                          <li key={idx}>
+                            📍 {entry.message} <span className="timestamp">({new Date(entry.timestamp.seconds * 1000).toLocaleString()})</span>
+                          </li>
+                        ))
+                      ) : (
+                        <li>No tracking updates yet.</li>
+                      )}
+                    </ul>
 
                     {user.role === "farmer" && (
                       <>
                         <div className="status-buttons">
-                          <button onClick={() => updateStatus(order.id, "In Transit")}>
-                            Mark In Transit
-                          </button>
-                          <button onClick={() => updateStatus(order.id, "Delivered")}>
-                            Mark Delivered
-                          </button>
+                          <button onClick={() => updateStatus(order.id, "In Transit")}>Mark In Transit</button>
+                          <button onClick={() => updateStatus(order.id, "Delivered")}>Mark Delivered</button>
                         </div>
 
                         <div className="tracking-update">
@@ -139,13 +165,9 @@ const Orders = () => {
                             type="text"
                             placeholder="Enter tracking info"
                             value={trackingInputs[order.id] || ""}
-                            onChange={(e) =>
-                              handleTrackingChange(order.id, e.target.value)
-                            }
+                            onChange={(e) => handleTrackingChange(order.id, e.target.value)}
                           />
-                          <button onClick={() => updateTracking(order.id)}>
-                            Update Tracking
-                          </button>
+                          <button onClick={() => updateTracking(order.id)}>Update Tracking</button>
                         </div>
                       </>
                     )}
@@ -156,9 +178,7 @@ const Orders = () => {
                         center={{ lat: loc.latitude, lng: loc.longitude }}
                         zoom={14}
                       >
-                        <Marker
-                          position={{ lat: loc.latitude, lng: loc.longitude }}
-                        />
+                        <Marker position={{ lat: loc.latitude, lng: loc.longitude }} />
                       </GoogleMap>
                     )}
                   </div>
