@@ -1,12 +1,9 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { useAuth } from "../auth"; // Custom hook for current user (create if needed)
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth"; // Custom hook for current user
 import "./Products.css";
-
-
-
 
 const products = [
   { id: 0, name: "Tomatoes", price: "₹30/kg", image: "/img/tomatoes.jpg", category: "Vegetables" },
@@ -41,7 +38,8 @@ const products = [
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const user = useAuth(); // assumes user has uid
+  const user = useAuth();
+  const navigate = useNavigate();
 
   const categories = ["All", "Grains", "Vegetables", "Root Vegetables", "Pulses", "Leafy Greens"];
   const filteredProducts = products.filter((product) =>
@@ -64,17 +62,40 @@ const Products = () => {
     }
   };
 
+  const goToCart = () => {
+    if (!user) return alert("Login required.");
+    navigate("/checkout");
+  };
+
   return (
     <div className="products-container">
       <h2>Available Products</h2>
-      <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="search-box" />
+
+      <div className="top-bar">
+        <input
+          type="text"
+          placeholder="Search..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="search-box"
+        />
+        <button onClick={goToCart} className="go-to-cart-button">
+          🛒 Go to Cart
+        </button>
+      </div>
+
       <div className="category-buttons">
         {categories.map((cat) => (
-          <button key={cat} className={`category-btn ${selectedCategory === cat ? "active" : ""}`} onClick={() => setSelectedCategory(cat)}>
+          <button
+            key={cat}
+            className={`category-btn ${selectedCategory === cat ? "active" : ""}`}
+            onClick={() => setSelectedCategory(cat)}
+          >
             {cat}
           </button>
         ))}
       </div>
+
       <div className="product-list">
         {filteredProducts.map((product) => (
           <div className="product-card" key={product.id}>
