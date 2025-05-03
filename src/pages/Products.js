@@ -5,6 +5,9 @@ import { db } from "../firebase";
 import { useAuth } from "../auth"; // Custom hook for current user (create if needed)
 import "./Products.css";
 
+const user = useAuth();
+
+
 const products = [
   { id: 0, name: "Tomatoes", price: "₹30/kg", image: "/img/tomatoes.jpg", category: "Vegetables" },
   { id: 1, name: "Potatoes", price: "₹20/kg", image: "/img/potatoes.jpg", category: "Vegetables" },
