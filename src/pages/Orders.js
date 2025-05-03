@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { collection, onSnapshot, updateDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  updateDoc,
+  doc,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../auth";
 import "./Orders.css";
@@ -7,49 +14,37 @@ import "./Orders.css";
 const Orders = () => {
   const user = useAuth();
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true); // Loading state
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !user.uid) {
-      console.log("User is not authenticated");
-      return;
-    }
+    if (!user || !user.uid) return;
 
-    const ordersRef = collection(db, "orders", user.uid, "items");
+    const ordersRef = collection(db, "supplyChainOrders");
+    const q = query(ordersRef, where("buyerId", "==", user.uid));
 
     const unsubscribe = onSnapshot(
-      ordersRef,
+      q,
       (snapshot) => {
-        console.log("Snapshot received:", snapshot); // Log the entire snapshot
-
-        // Check if the snapshot has valid documents
-        if (snapshot && snapshot.docs) {
-          const orderList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          console.log("Mapped orders:", orderList); // Log mapped orders
-          setOrders(orderList);
-        } else {
-          console.warn("No documents found in snapshot");
-          setOrders([]); // Set orders to empty array if no data is found
-        }
-        setLoading(false); // Set loading to false after snapshot is processed
+        const orderList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setOrders(orderList);
+        setLoading(false);
       },
       (error) => {
-        console.error("Error fetching orders:", error); // Log any error
-        alert("Failed to load orders. Please try again.");
-        setLoading(false); // Set loading to false even on error
+        console.error("Error fetching orders:", error);
+        alert("Failed to load orders.");
+        setLoading(false);
       }
     );
 
-    // Cleanup function when component unmounts
     return () => unsubscribe();
   }, [user]);
 
   const updateStatus = async (orderId, status) => {
     try {
-      const orderDoc = doc(db, "orders", user.uid, "items", orderId);
+      const orderDoc = doc(db, "supplyChainOrders", orderId);
       await updateDoc(orderDoc, { status });
       alert(`Status updated to ${status}`);
     } catch (err) {
@@ -61,23 +56,23 @@ const Orders = () => {
   return (
     <div className="orders-container">
       <h2>Your Orders</h2>
-
       {loading ? (
-        <p>Loading orders...</p> // Show loading state while fetching data
+        <p>Loading orders...</p>
       ) : orders.length === 0 ? (
-        <p>No orders found.</p> // If no orders are available
+        <p>No orders found.</p>
       ) : (
         <div className="orders-list">
           {orders.map((order) => (
             <div className="order-card" key={order.id}>
-              <img src={order.image} alt={order.name} className="order-image" />
+              {order.image && (
+                <img src={order.image} alt={order.name} className="order-image" />
+              )}
               <div className="order-details">
-                <h3>{order.name}</h3>
+                <h3>{order.crop}</h3>
                 <p>Quantity: {order.quantity}</p>
-                <p>Total: ₹{order.total}</p>
+                <p>Price: ₹{order.price}</p>
                 <p>Status: <strong>{order.status || "Pending"}</strong></p>
 
-                {/* Optional role check */}
                 {user.role === "farmer" && (
                   <div className="status-buttons">
                     <button onClick={() => updateStatus(order.id, "In Transit")}>Mark In Transit</button>
