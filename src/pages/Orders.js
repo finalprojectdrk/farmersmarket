@@ -1,55 +1,40 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 import "./Orders.css";
 
-const Orders = () => {
+const Orders = ({ currentUserName = "Default Buyer" }) => {
   const [orders, setOrders] = useState([]);
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const storedOrders = JSON.parse(localStorage.getItem("orders")) || [];
-    setOrders(storedOrders);
-  }, []);
+    const q = query(collection(db, "supplyChainOrders"), where("buyer", "==", currentUserName));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const userOrders = [];
+      querySnapshot.forEach((doc) => userOrders.push({ id: doc.id, ...doc.data() }));
+      setOrders(userOrders);
+    });
 
-  // ✅ Function to cancel an order
-  const handleCancelOrder = (index) => {
-    const updatedOrders = orders.filter((_, i) => i !== index);
-    setOrders(updatedOrders);
-    localStorage.setItem("orders", JSON.stringify(updatedOrders));
-  };
-
-  const handleProceedToCheckout = () => {
-    navigate("/checkout");
-  };
+    return () => unsubscribe();
+  }, [currentUserName]);
 
   return (
     <div className="orders-container">
-      <h2>Your Cart</h2>
+      <h2>📦 Your Orders</h2>
       {orders.length === 0 ? (
-        <p>No items in the cart</p>
+        <p>No orders yet</p>
       ) : (
-        <>
-          <ul className="order-list">
-            {orders.map((product, index) => (
-              <li key={index} className="order-item">
-                <img src={product.image} alt={product.name} className="order-image" />
-                <div className="order-details">
-                  <h3>{product.name}</h3>
-                  <p>Price: {product.price}</p>
-                  <p>Farmer: {product.farmer}</p>
-                </div>
-                <button className="cancel-button" onClick={() => handleCancelOrder(index)}>
-                  Cancel
-                </button>
-              </li>
-            ))}
-          </ul>
-          <button onClick={handleProceedToCheckout} className="checkout-button">
-            Proceed to Checkout
-          </button>
-        </>
+        <ul className="order-list">
+          {orders.map((order) => (
+            <li key={order.id} className="order-item">
+              <div className="order-details">
+                <h3>Crop: {order.crop}</h3>
+                <p>Farmer: {order.farmer}</p>
+                <p>Status: {order.status}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
-      <Link to="/products" className="back-button">Continue Shopping</Link>
     </div>
   );
 };
