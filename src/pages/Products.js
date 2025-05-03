@@ -1,5 +1,8 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+
+import React, { useState, useEffect } from "react";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import { useAuth } from "../auth"; // Custom hook for current user (create if needed)
 import "./Products.css";
 
 const products = [
@@ -35,62 +38,50 @@ const products = [
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const user = useAuth(); // assumes user has uid
 
-  const categories = ["All", "Grains", "Vegetables", "Root Vegetables", "Pulses","Leafy Greens"];
-
-  // Filter products based on search term and category
+  const categories = ["All", "Grains", "Vegetables", "Root Vegetables", "Pulses", "Leafy Greens"];
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (selectedCategory === "All" || product.category === selectedCategory)
   );
 
+  const addToCart = async (product) => {
+    if (!user) return alert("Login required.");
+    try {
+      await addDoc(collection(db, "carts"), {
+        ...product,
+        userId: user.uid,
+        addedAt: new Date(),
+      });
+      alert("✅ Added to cart!");
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+      alert("❌ Failed to add.");
+    }
+  };
+
   return (
     <div className="products-container">
       <h2>Available Products</h2>
-
-      {/* Search Box */}
-      <input
-        type="text"
-        placeholder="Search for crops..."
-        className="search-box"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-
-      {/* Category Filter Buttons */}
+      <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="search-box" />
       <div className="category-buttons">
-        {categories.map((category) => (
-          <button
-            key={category}
-            className={`category-btn ${selectedCategory === category ? "active" : ""}`}
-            onClick={() => setSelectedCategory(category)}
-          >
-            {category}
+        {categories.map((cat) => (
+          <button key={cat} className={`category-btn ${selectedCategory === cat ? "active" : ""}`} onClick={() => setSelectedCategory(cat)}>
+            {cat}
           </button>
         ))}
       </div>
-
-      {/* Product List */}
       <div className="product-list">
-        {filteredProducts.length > 0 ? (
-          filteredProducts.map((product) => (
-            <div className="product-card" key={product.id}>
-              <img src={product.image} alt={product.name} className="product-image" />
-              <h3>{product.name}</h3>
-              <p>{product.price}</p>
-              <Link to={`/product/${product.id}`} className="buy-button">
-                Buy Now
-              </Link>
-            </div>
-          ))
-        ) : (
-          <p className="no-results">No matching products found</p>
-        )}
+        {filteredProducts.map((product) => (
+          <div className="product-card" key={product.id}>
+            <img src={product.image} alt={product.name} className="product-image" />
+            <h3>{product.name}</h3>
+            <p>{product.price}</p>
+            <button className="buy-button" onClick={() => addToCart(product)}>Add to Cart</button>
+          </div>
+        ))}
       </div>
-
-      <Link to="/buyer-dashboard" className="back-button">
-        Back to Dashboard
-      </Link>
     </div>
   );
 };
