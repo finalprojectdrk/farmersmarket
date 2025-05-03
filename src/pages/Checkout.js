@@ -15,9 +15,8 @@ const Checkout = () => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const user = useAuth(); // Current logged-in user
+  const user = useAuth(); // Custom hook that returns the user
 
-  // Fetch cart items from Firestore
   useEffect(() => {
     if (!user) return;
 
@@ -27,10 +26,9 @@ const Checkout = () => {
       setCart(items);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribe(); // Cleanup
   }, [user]);
 
-  // Geocode address into lat/lng
   const getCoordinatesFromAddress = async (address) => {
     const geocoder = new window.google.maps.Geocoder();
     return new Promise((resolve, reject) => {
@@ -47,12 +45,10 @@ const Checkout = () => {
     });
   };
 
-  // Form field change
   const handleChange = (e) => {
     setDetails({ ...details, [e.target.name]: e.target.value });
   };
 
-  // Geocode address and store coordinates
   const handleLocation = async () => {
     if (!details.address) return alert("Enter address first");
     try {
@@ -64,35 +60,47 @@ const Checkout = () => {
     }
   };
 
-  // Confirm and place order
   const handleOrderConfirm = async () => {
-    if (!details.name || !details.address || !details.contact) return alert("Please fill all fields");
-    if (!location.latitude) return alert("Please fetch location");
+    if (!details.name || !details.address || !details.contact) {
+      return alert("Please fill all fields");
+    }
+    if (!location.latitude || !location.longitude) {
+      return alert("Please fetch location");
+    }
     if (cart.length === 0) return alert("Cart is empty!");
 
     setLoading(true);
 
     try {
+      console.log("Cart items:", cart);
+
       await Promise.all(
         cart.map(async (item) => {
           await addDoc(collection(db, "supplyChainOrders"), {
             buyer: details.name,
+            contact: details.contact,
+            address: details.address,
+            payment: details.payment,
             crop: item.name,
-            farmer: user.displayName || user.email || "Unknown Farmer",
+            farmer: item.farmer || "Not Assigned",
             location,
             status: "Pending",
             transport: "Not Assigned",
             createdAt: new Date(),
           });
 
-          // Remove item from cart
-          await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
+          if (typeof item.id === "string") {
+            await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
+          } else {
+            console.warn("Skipping item with invalid ID:", item);
+          }
         })
       );
+
       alert("✅ Orders placed!");
       navigate("/products");
     } catch (e) {
-      console.error(e);
+      console.error("Order failed:", e);
       alert("❌ Order failed");
     }
 
@@ -120,7 +128,7 @@ const Checkout = () => {
           <ul>
             {cart.map((item) => (
               <li key={item.id}>
-                {item.name} - ₹{item.price} x {item.quantity}
+                {item.name} - ₹{item.price} x {item.quantity || 1}
               </li>
             ))}
           </ul>
