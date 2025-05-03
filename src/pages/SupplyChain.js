@@ -19,7 +19,9 @@ const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [transportLocations, setTransportLocations] = useState({}); // Holds selected transport points
-
+  const [farmerLocation, setFarmerLocation] = useState({});
+  const [transportLocation, setTransportLocation] = useState({});
+  
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "supplyChainOrders"), (querySnapshot) => {
       const fetched = querySnapshot.docs.map((doc) => ({
@@ -57,6 +59,38 @@ const SupplyChain = () => {
       alert("Transport assigned");
     } catch (error) {
       console.error("Failed to assign transport", error);
+    }
+  };
+
+  const handleLocationInput = (address, type) => {
+    getCoordinatesFromAddress(address).then((location) => {
+      if (type === "farmer") {
+        setFarmerLocation(location);
+      } else if (type === "transport") {
+        setTransportLocation(location);
+      }
+    });
+  };
+
+  const getCoordinatesFromAddress = async (address) => {
+    const geocoder = new window.google.maps.Geocoder();
+
+    try {
+      const results = await new Promise((resolve, reject) => {
+        geocoder.geocode({ address: address }, (results, status) => {
+          if (status === "OK") {
+            const lat = results[0].geometry.location.lat();
+            const lng = results[0].geometry.location.lng();
+            resolve({ lat, lng });
+          } else {
+            reject("Geocode was not successful: " + status);
+          }
+        });
+      });
+      return results;
+    } catch (error) {
+      console.error("Error fetching coordinates:", error);
+      return { lat: null, lng: null }; // Handle case where coordinates are not found
     }
   };
 
@@ -134,18 +168,11 @@ const SupplyChain = () => {
                       icon="http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
                     />
                   )}
-                  {/* Draw route */}
                   {renderPolyline(order)}
                 </React.Fragment>
               ))}
 
-              {/* Allow setting transport location by clicking */}
-              {orders.map((order) => (
-                <GoogleMap
-                  key={order.id}
-                  onClick={(e) => handleMapClick(order.id, e)}
-                />
-              ))}
+              <GoogleMap onClick={(e) => handleMapClick("selectedOrderId", e)} />
             </GoogleMap>
           </LoadScript>
 
@@ -181,6 +208,19 @@ const SupplyChain = () => {
               ))}
             </tbody>
           </table>
+
+          <div style={styles.locationInputContainer}>
+            <input
+              type="text"
+              placeholder="Enter Farmer Location"
+              onBlur={(e) => handleLocationInput(e.target.value, "farmer")}
+            />
+            <input
+              type="text"
+              placeholder="Enter Transport Location"
+              onBlur={(e) => handleLocationInput(e.target.value, "transport")}
+            />
+          </div>
         </>
       )}
     </div>
@@ -209,6 +249,11 @@ const styles = {
     "In Transit": { color: "orange", fontWeight: "bold" },
     Shipped: { color: "blue", fontWeight: "bold" },
     Delivered: { color: "green", fontWeight: "bold" },
+  },
+  locationInputContainer: {
+    marginTop: "20px",
+    display: "flex",
+    justifyContent: "space-between",
   },
 };
 
