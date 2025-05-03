@@ -185,7 +185,47 @@ const FarmerDashboard = () => {
         />
       </div>
 
-      <div className="prediction-section card">
+      
+      <div className="price-section card">
+        <h3>🌾 Real-Time Crop Prices</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Crop</th>
+              <th>Market Price (₹/kg)</th>
+              <th>Market</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentData.map((priceData, index) => (
+              <tr key={index}>
+                <td>{priceData.crop}</td>
+                <td>₹ {priceData.price}</td>
+                <td>{priceData.market}</td>
+                <td>{priceData.date}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="pagination">
+          <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}>
+            Previous
+          </button>
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+              <div className="prediction-section card">
         <h3>📈 Predict Future Crop Prices</h3>
         <input
           type="text"
@@ -237,44 +277,6 @@ const FarmerDashboard = () => {
         )}
       </div>
 
-      <div className="price-section card">
-        <h3>🌾 Real-Time Crop Prices</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Crop</th>
-              <th>Market Price (₹/kg)</th>
-              <th>Market</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentData.map((priceData, index) => (
-              <tr key={index}>
-                <td>{priceData.crop}</td>
-                <td>₹ {priceData.price}</td>
-                <td>{priceData.market}</td>
-                <td>{priceData.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="pagination">
-          <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}>
-            Previous
-          </button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </button>
-        </div>
-      </div>
 
       <div className="products-section card">
         <h3>🌾 Your Products</h3>
