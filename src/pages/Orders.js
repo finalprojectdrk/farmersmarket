@@ -6,6 +6,8 @@ import {
   doc,
   query,
   where,
+  getDocs,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../auth";
@@ -16,35 +18,54 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Copy from supplyChainOrders to orders once per user
+  const syncOrders = async () => {
+    if (!user?.uid) return;
+
+    const sourceRef = collection(db, "supplyChainOrders");
+    const sourceQuery = query(sourceRef, where("buyerId", "==", user.uid));
+    const sourceSnapshot = await getDocs(sourceQuery);
+
+    const destRef = collection(db, "orders");
+
+    for (const docSnap of sourceSnapshot.docs) {
+      const destDocRef = doc(db, "orders", docSnap.id);
+      await setDoc(destDocRef, docSnap.data(), { merge: true });
+    }
+  };
+
   useEffect(() => {
     if (!user || !user.uid) return;
 
-    const ordersRef = collection(db, "supplyChainOrders");
-    const q = query(ordersRef, where("buyerId", "==", user.uid));
+    // Sync only once when component mounts
+    syncOrders().then(() => {
+      const ordersRef = collection(db, "orders");
+      const q = query(ordersRef, where("buyerId", "==", user.uid));
 
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const orderList = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setOrders(orderList);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching orders:", error);
-        alert("Failed to load orders.");
-        setLoading(false);
-      }
-    );
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const orderList = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setOrders(orderList);
+          setLoading(false);
+        },
+        (error) => {
+          console.error("Error fetching orders:", error);
+          alert("Failed to load orders.");
+          setLoading(false);
+        }
+      );
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    });
   }, [user]);
 
   const updateStatus = async (orderId, status) => {
     try {
-      const orderDoc = doc(db, "supplyChainOrders", orderId);
+      const orderDoc = doc(db, "orders", orderId);
       await updateDoc(orderDoc, { status });
       alert(`Status updated to ${status}`);
     } catch (err) {
@@ -82,6 +103,12 @@ const Orders = () => {
                   <p>Quantity: {order.quantity}</p>
                   <p>Price: {displayPrice}</p>
                   <p>Status: <strong>{order.status || "Pending"}</strong></p>
+                  <p>
+                    Tracking:{" "}
+                    <strong>
+                      {order.tracking || "Tracking not available"}
+                    </strong>
+                  </p>
 
                   {user.role === "farmer" && (
                     <div className="status-buttons">
