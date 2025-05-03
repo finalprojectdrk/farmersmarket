@@ -46,11 +46,7 @@ const Home = () => {
       <section className="hero" style={{ backgroundImage: `url(${bgImage})` }}>
         <h1>Welcome to FarmTrek</h1>
 
- <div>
-      <h1>Buyer Dashboard</h1>
-      {/* Temporarily show upload button */}
-      <UploadProducts />
-    </div>
+ 
         <p>Connecting Farmers & Buyers for a better marketplace</p>
         <button className="cta-button" onClick={() => navigate("/register")}>
           Get Started
