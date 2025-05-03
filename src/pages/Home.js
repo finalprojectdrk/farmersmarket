@@ -7,6 +7,10 @@ import farmerIcon from "../images/farmer-icon.png";
 import buyerIcon from "../images/buyer-icon.png";
 import marketIcon from "../images/marketplace2.png";
 
+import UploadProducts from './UploadProducts';
+// ...
+<UploadProducts />
+
 const Home = () => {
   const navigate = useNavigate();
 
