@@ -8,8 +8,6 @@ import buyerIcon from "../images/buyer-icon.png";
 import marketIcon from "../images/marketplace2.png";
 
 import UploadProducts from '../UploadProducts';
-// ...
-<UploadProducts />
 
 const Home = () => {
   const navigate = useNavigate();
@@ -47,6 +45,12 @@ const Home = () => {
       {/* Hero Section */}
       <section className="hero" style={{ backgroundImage: `url(${bgImage})` }}>
         <h1>Welcome to FarmTrek</h1>
+
+ <div>
+      <h1>Buyer Dashboard</h1>
+      {/* Temporarily show upload button */}
+      <UploadProducts />
+    </div>
         <p>Connecting Farmers & Buyers for a better marketplace</p>
         <button className="cta-button" onClick={() => navigate("/register")}>
           Get Started
