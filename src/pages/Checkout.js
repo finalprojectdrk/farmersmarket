@@ -91,7 +91,7 @@ const CheckoutForm = () => {
         const cleanedPhone = details.contact.startsWith("+91") ? details.contact : `+91${details.mobile}`;
 
         // 🔥 Send login SMS
-        await sendSMS(cleanedPhone, `Hi ${details.name}, you have successfully placed the order : ${orderId} .`);
+        sendSMS(cleanedPhone, `Hi ${details.name}, you have successfully placed the order : ${orderId} .`);
 
         // 🔥 Send login Email
        // await sendEmail(
