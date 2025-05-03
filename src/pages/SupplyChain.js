@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { db } from "../firebase";
 import {
   collection,
   onSnapshot,
@@ -6,178 +7,136 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
 import {
   GoogleMap,
   LoadScript,
   Marker,
-  Polyline,
+  DirectionsService,
+  DirectionsRenderer,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your real key
 
 const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [originLocation, setOriginLocation] = useState(null); // Farmer's location
+  const [trackingOrderId, setTrackingOrderId] = useState(null);
+  const [directionsResponse, setDirectionsResponse] = useState(null);
 
-  // Get orders
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "supplyChainOrders"),
-      (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setOrders(data);
-        setLoading(false);
-      }
-    );
+    const unsubscribe = onSnapshot(collection(db, "supplyChainOrders"), (querySnapshot) => {
+      const fetched = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setOrders(fetched);
+      setLoading(false);
+    });
 
     return () => unsubscribe();
   }, []);
 
-  // Auto detect farmer (origin) location
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setOriginLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => {
-        console.error("Failed to get location:", error);
-        alert("Please allow location access for tracking.");
-      }
-    );
-  }, []);
-
   const updateOrderStatus = async (orderId, newStatus) => {
-    await updateDoc(doc(db, "supplyChainOrders", orderId), {
-      status: newStatus,
-    });
-    alert(`Status updated to ${newStatus}`);
+    try {
+      await updateDoc(doc(db, "supplyChainOrders", orderId), {
+        status: newStatus,
+      });
+      alert(`Order status updated to ${newStatus}`);
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
   };
 
   const deleteOrder = async (orderId) => {
     if (window.confirm("Are you sure you want to delete this order?")) {
-      await deleteDoc(doc(db, "supplyChainOrders", orderId));
-      alert("Order deleted successfully");
+      try {
+        await deleteDoc(doc(db, "supplyChainOrders", orderId));
+        alert("Order deleted");
+      } catch (error) {
+        console.error("Error deleting order:", error);
+      }
     }
   };
 
-  // Get coordinates for buyer address
-  const getCoordinatesFromAddress = async (address) => {
-    const geocoder = new window.google.maps.Geocoder();
-    return new Promise((resolve, reject) => {
-      geocoder.geocode({ address }, (results, status) => {
-        if (status === "OK") {
-          const location = results[0].geometry.location;
-          resolve({
-            latitude: location.lat(),
-            longitude: location.lng(),
-          });
-        } else {
-          reject("Geocoding failed: " + status);
-        }
-      });
-    });
-  };
+  const handleTrack = (order) => {
+    setTrackingOrderId(order.id);
 
-  const renderPolyline = (order) => {
-    if (
-      order.id !== selectedOrderId ||
-      !originLocation ||
-      !order.destinationCoords
-    )
-      return null;
-
-    return (
-      <Polyline
-        path={[
-          {
-            lat: originLocation.latitude,
-            lng: originLocation.longitude,
-          },
-          {
-            lat: order.destinationCoords.latitude,
-            lng: order.destinationCoords.longitude,
-          },
-        ]}
-        options={{
-          strokeColor: "#4285F4",
-          strokeOpacity: 0.8,
-          strokeWeight: 4,
-        }}
-      />
-    );
-  };
-
-  const handleTrack = async (order) => {
-    try {
-      const destinationCoords = await getCoordinatesFromAddress(order.address);
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === order.id ? { ...o, destinationCoords } : o
-        )
-      );
-      setSelectedOrderId(order.id);
-    } catch (err) {
-      console.error("Tracking failed:", err);
-      alert("Could not geocode buyer address.");
+    if (order.originLocation && order.location) {
+      setDirectionsResponse(null); // Reset first
     }
   };
+
+  const handleDirectionsCallback = (response) => {
+    if (response !== null && response.status === "OK") {
+      setDirectionsResponse(response);
+    } else {
+      console.error("Directions request failed", response);
+    }
+  };
+
+  const selectedOrder = orders.find((o) => o.id === trackingOrderId);
 
   return (
     <div style={styles.container}>
-      <h2>🚜 Supply Chain Management</h2>
+      <h2 style={styles.heading}>🚜 Supply Chain Tracker</h2>
+
       {loading ? (
-        <p>Loading orders...</p>
+        <div>Loading orders...</div>
       ) : (
         <>
           <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
             <GoogleMap
-              mapContainerStyle={styles.mapContainerStyle}
-              center={
-                originLocation
-                  ? {
-                      lat: originLocation.latitude,
-                      lng: originLocation.longitude,
-                    }
-                  : { lat: 12.9716, lng: 77.5946 }
-              }
-              zoom={7}
+              mapContainerStyle={styles.map}
+              center={{ lat: 12.9716, lng: 77.5946 }}
+              zoom={6}
             >
               {orders.map((order) => (
                 <React.Fragment key={order.id}>
-                  {/* Origin Marker */}
-                  {order.id === selectedOrderId && originLocation && (
+                  {order.originLocation && (
                     <Marker
                       position={{
-                        lat: originLocation.latitude,
-                        lng: originLocation.longitude,
+                        lat: order.originLocation.latitude,
+                        lng: order.originLocation.longitude,
                       }}
                       label="Farmer"
                       icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
                     />
                   )}
-                  {/* Destination Marker */}
-                  {order.id === selectedOrderId && order.destinationCoords && (
+                  {order.location && (
                     <Marker
                       position={{
-                        lat: order.destinationCoords.latitude,
-                        lng: order.destinationCoords.longitude,
+                        lat: order.location.latitude,
+                        lng: order.location.longitude,
                       }}
                       label="Buyer"
                       icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
                     />
                   )}
-                  {renderPolyline(order)}
                 </React.Fragment>
               ))}
+
+              {selectedOrder &&
+                selectedOrder.originLocation &&
+                selectedOrder.location && (
+                  <DirectionsService
+                    options={{
+                      destination: {
+                        lat: selectedOrder.location.latitude,
+                        lng: selectedOrder.location.longitude,
+                      },
+                      origin: {
+                        lat: selectedOrder.originLocation.latitude,
+                        lng: selectedOrder.originLocation.longitude,
+                      },
+                      travelMode: "DRIVING",
+                    }}
+                    callback={handleDirectionsCallback}
+                  />
+                )}
+
+              {directionsResponse && (
+                <DirectionsRenderer directions={directionsResponse} />
+              )}
             </GoogleMap>
           </LoadScript>
 
@@ -187,7 +146,6 @@ const SupplyChain = () => {
                 <th>Crop</th>
                 <th>Buyer</th>
                 <th>Status</th>
-                <th>Address</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -195,13 +153,9 @@ const SupplyChain = () => {
               {orders.map((order) => (
                 <tr key={order.id}>
                   <td>{order.crop}</td>
-                  <td>{order.name}</td>
-                  <td style={styles.status[order.status]}>
-                    {order.status}
-                  </td>
-                  <td>{order.address}</td>
+                  <td>{order.buyer}</td>
+                  <td style={styles.status[order.status] || {}}>{order.status}</td>
                   <td>
-                    <button onClick={() => handleTrack(order)}>Track</button>{" "}
                     <select
                       value={order.status}
                       onChange={(e) =>
@@ -212,11 +166,19 @@ const SupplyChain = () => {
                       <option value="In Transit">In Transit</option>
                       <option value="Shipped">Shipped</option>
                       <option value="Delivered">Delivered</option>
-                    </select>{" "}
+                    </select>
+
+                    <button
+                      style={styles.button}
+                      onClick={() => handleTrack(order)}
+                    >
+                      Track
+                    </button>
+
                     {order.status === "Delivered" && (
                       <button
+                        style={{ ...styles.button, backgroundColor: "red" }}
                         onClick={() => deleteOrder(order.id)}
-                        style={{ color: "red" }}
                       >
                         Delete
                       </button>
@@ -235,24 +197,40 @@ const SupplyChain = () => {
 const styles = {
   container: {
     padding: "20px",
-    background: "#f4f4f4",
-    borderRadius: "8px",
+    fontFamily: "Arial, sans-serif",
+    backgroundColor: "#f4f4f4",
   },
-  mapContainerStyle: {
-    width: "100%",
-    height: "400px",
+  heading: {
+    textAlign: "center",
+    color: "#333",
     marginBottom: "20px",
+  },
+  map: {
+    width: "100%",
+    height: "500px",
+    marginBottom: "20px",
+    borderRadius: "10px",
   },
   table: {
     width: "100%",
-    marginTop: "20px",
     borderCollapse: "collapse",
+    backgroundColor: "#fff",
+    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
   },
   status: {
     Pending: { color: "red", fontWeight: "bold" },
     "In Transit": { color: "orange", fontWeight: "bold" },
     Shipped: { color: "blue", fontWeight: "bold" },
     Delivered: { color: "green", fontWeight: "bold" },
+  },
+  button: {
+    marginLeft: "8px",
+    padding: "5px 10px",
+    backgroundColor: "#4CAF50",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
   },
 };
 
