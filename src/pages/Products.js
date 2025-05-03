@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import { doc, updateDoc } from "firebase/firestore";
 import { useAuth } from "../auth"; // Custom hook for current user (create if needed)
 import "./Products.css";
 
