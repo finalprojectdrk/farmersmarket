@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { collection, onSnapshot, updateDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
-import { useAuth } from "../auth"; // Custom hook
+import { useAuth } from "../auth";
 import "./Orders.css";
 
 const Orders = () => {
@@ -9,16 +9,23 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !user.uid) return;
 
     const ordersRef = collection(db, "orders", user.uid, "items");
-    const unsubscribe = onSnapshot(ordersRef, (snapshot) => {
-      const orderList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setOrders(orderList);
-    });
+
+    const unsubscribe = onSnapshot(
+      ordersRef,
+      (snapshot) => {
+        const orderList = snapshot.docs?.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) || [];
+        setOrders(orderList);
+      },
+      (error) => {
+        console.error("Error fetching orders:", error);
+      }
+    );
 
     return () => unsubscribe();
   }, [user]);
@@ -50,7 +57,7 @@ const Orders = () => {
                 <p>Quantity: {order.quantity}</p>
                 <p>Total: ₹{order.total}</p>
                 <p>Status: <strong>{order.status || "Pending"}</strong></p>
-                {/* Optional: Let farmers update status */}
+                {/* Optional role check */}
                 {user.role === "farmer" && (
                   <div className="status-buttons">
                     <button onClick={() => updateStatus(order.id, "In Transit")}>Mark In Transit</button>
