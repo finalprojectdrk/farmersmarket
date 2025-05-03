@@ -1,91 +1,154 @@
-import React, { useEffect, useState } from "react";
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  collection,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  addDoc,
+} from "firebase/firestore";
+import { LoadScript } from "@react-google-maps/api";
 import { db } from "../firebase";
 import { useAuth } from "../auth";
-import { useNavigate } from "react-router-dom";
+import "./Checkout.css";
+
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
 const Checkout = () => {
-  const [cartItems, setCartItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const user = useAuth();
   const navigate = useNavigate();
+  const [details, setDetails] = useState({
+    name: "",
+    address: "",
+    contact: "",
+    payment: "COD",
+  });
+  const [location, setLocation] = useState({ latitude: null, longitude: null });
+  const [cart, setCart] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const user = useAuth();
 
   useEffect(() => {
-    if (user) {
-      fetchCartItems();
-    }
+    if (!user) return;
+
+    const cartRef = collection(db, "carts", user.uid, "items");
+    const unsubscribe = onSnapshot(cartRef, (snapshot) => {
+      const items = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id, // Firestore doc ID
+          name: data.name || "Unnamed",
+          price: data.price || 0,
+          quantity: data.quantity || 1,
+        };
+      });
+      setCart(items);
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
-  const fetchCartItems = async () => {
-    try {
-      const q = query(collection(db, "carts"), where("userId", "==", user.uid));
-      const snapshot = await getDocs(q);
-      const items = snapshot.docs.map((doc) => ({
-        id: doc.id, // Get Firestore doc ID
-        ...doc.data(),
-      }));
-      setCartItems(items);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching cart items:", error);
-      setLoading(false);
-    }
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!user) {
-      alert("You must be logged in to place an order.");
-      return;
-    }
-
-    try {
-      const orderPromises = cartItems.map(async (item) => {
-        if (!item.id) {
-          console.warn("Item ID is missing for item:", item);
-          return;
+  const getCoordinatesFromAddress = async (address) => {
+    const geocoder = new window.google.maps.Geocoder();
+    return new Promise((resolve, reject) => {
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === "OK") {
+          resolve({
+            latitude: results[0].geometry.location.lat(),
+            longitude: results[0].geometry.location.lng(),
+          });
+        } else {
+          reject("Geocoding failed: " + status);
         }
-
-        await addDoc(collection(db, "orders"), {
-          ...item,
-          userId: user.uid,
-          status: "Pending",
-          createdAt: new Date(),
-        });
-
-        // Remove from cart
-        await deleteDoc(doc(db, "carts", item.id));
       });
+    });
+  };
 
-      await Promise.all(orderPromises);
+  const handleChange = (e) => {
+    setDetails({ ...details, [e.target.name]: e.target.value });
+  };
 
-      alert("✅ Order placed successfully!");
-      navigate("/orders");
-    } catch (error) {
-      console.error("Error placing order:", error);
-      alert("❌ Failed to place order.");
+  const handleLocation = async () => {
+    if (!details.address) return alert("Enter address first");
+    try {
+      const coords = await getCoordinatesFromAddress(details.address);
+      setLocation(coords);
+      alert("📍 Location set!");
+    } catch (err) {
+      alert("❌ Failed to get location");
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  const handleOrderConfirm = async () => {
+    if (!details.name || !details.address || !details.contact)
+      return alert("Please fill all fields");
+    if (!location.latitude) return alert("Please fetch location");
+    if (cart.length === 0) return alert("Cart is empty!");
+
+    setLoading(true);
+
+    try {
+      await Promise.all(
+        cart.map(async (item) => {
+          await addDoc(collection(db, "supplyChainOrders"), {
+            buyer: details.name,
+            buyerId: user?.uid,
+            crop: item.name,
+            location,
+            status: "Pending",
+            transport: "Not Assigned",
+            createdAt: new Date(),
+            payment: details.payment,
+            quantity: item.quantity || 1,
+            price: item.price,
+          });
+
+          // Ensure deletion works using correct Firestore path
+          if (item.id) {
+            const cartItemRef = doc(db, "carts", user.uid, "items", item.id);
+            await deleteDoc(cartItemRef);
+          } else {
+            console.warn("Missing item.id for cart item:", item);
+          }
+        })
+      );
+      alert("✅ Orders placed!");
+      navigate("/products");
+    } catch (e) {
+      console.error(e);
+      alert("❌ Order failed");
+    }
+
+    setLoading(false);
+  };
 
   return (
-    <div className="checkout-container">
-      <h2>🛒 Your Cart</h2>
-      {cartItems.length === 0 ? (
-        <p>No items in cart.</p>
-      ) : (
-        <>
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+      <div className="checkout-container">
+        <h2>🧾 Checkout</h2>
+        <input name="name" placeholder="Name" onChange={handleChange} required />
+        <input name="address" placeholder="Delivery Address" onChange={handleChange} required />
+        <input name="contact" placeholder="Contact" onChange={handleChange} required />
+        <select name="payment" onChange={handleChange}>
+          <option value="COD">Cash on Delivery</option>
+          <option value="UPI">UPI</option>
+        </select>
+        <button onClick={handleLocation}>📍 Get Location</button>
+        <button onClick={handleOrderConfirm} disabled={loading}>
+          {loading ? "Placing..." : "Confirm Order"}
+        </button>
+
+        <div className="cart-summary">
+          <h3>Cart Summary</h3>
           <ul>
-            {cartItems.map((item) => (
+            {cart.map((item) => (
               <li key={item.id}>
-                <strong>{item.name}</strong> — {item.price}
+                {item.name} - ₹{item.price} x {item.quantity}
               </li>
             ))}
           </ul>
-          <button onClick={handlePlaceOrder}>✅ Place Order</button>
-        </>
-      )}
-    </div>
+        </div>
+      </div>
+    </LoadScript>
   );
 };
 
