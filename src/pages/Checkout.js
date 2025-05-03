@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { db } from "../firebase"; // Firebase config
-import { doc, setDoc } from "firebase/firestore"; // Firestore functions
+import { db } from "../firebase";
+import { collection, addDoc } from "firebase/firestore";
 import "./Checkout.css";
 
-// Checkout Component
 const Checkout = () => {
   const navigate = useNavigate();
   const [details, setDetails] = useState({
@@ -13,65 +12,80 @@ const Checkout = () => {
     contact: "",
     payment: "COD",
   });
-  const [location, setLocation] = useState({
-    latitude: null,
-    longitude: null,
-  });
+  const [location, setLocation] = useState({ latitude: null, longitude: null });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setDetails({ ...details, [e.target.name]: e.target.value });
   };
 
-  // Fetch coordinates for address using Google Geocoding API
-  const handleLocation = async () => {
-    const { lat, lng } = await getCoordinatesFromAddress(details.address);
-    setLocation({ latitude: lat, longitude: lng });
+  const getCoordinatesFromAddress = async (address) => {
+    const geocoder = new window.google.maps.Geocoder();
+    return new Promise((resolve, reject) => {
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === "OK") {
+          const lat = results[0].geometry.location.lat();
+          const lng = results[0].geometry.location.lng();
+          resolve({ latitude: lat, longitude: lng });
+        } else {
+          reject(`Geocode failed due to: ${status}`);
+        }
+      });
+    });
   };
 
-  // Confirm the order and save to Firestore
+  const handleLocation = async () => {
+    if (!details.address) {
+      alert("Please enter the delivery address first.");
+      return;
+    }
+    try {
+      const coords = await getCoordinatesFromAddress(details.address);
+      setLocation(coords);
+      alert("Location fetched successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch location.");
+    }
+  };
+
   const handleOrderConfirm = async () => {
-    if (!location.latitude || !location.longitude) {
-      alert("Please provide a valid address or enable location access.");
+    if (!details.name || !details.address || !details.contact) {
+      alert("Please fill all required fields.");
       return;
     }
 
-    // Save order with location info in Firestore
-    const orderRef = doc(db, "supplyChainOrders", "newOrderId");
-    await setDoc(orderRef, {
-      ...details,
-      location, // Save latitude and longitude
-      status: "Pending",
-    });
+    if (!location.latitude || !location.longitude) {
+      alert("Please fetch location before confirming order.");
+      return;
+    }
 
-    alert("Order Placed Successfully!");
-    localStorage.removeItem("orders"); // Clear cart after placing order
-    navigate("/products"); // Redirect back to products
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "supplyChainOrders"), {
+        ...details,
+        location,
+        status: "Pending",
+        transport: "Not Assigned",
+        createdAt: new Date(),
+      });
+
+      alert("✅ Order Placed Successfully!");
+      localStorage.removeItem("orders");
+      navigate("/products");
+    } catch (err) {
+      console.error("Error placing order:", err);
+      alert("❌ Failed to place order.");
+    }
+    setLoading(false);
   };
 
   return (
     <div className="checkout-container">
-      <h2>Checkout</h2>
-      <input
-        type="text"
-        name="name"
-        placeholder="Full Name"
-        onChange={handleChange}
-        required
-      />
-      <input
-        type="text"
-        name="address"
-        placeholder="Delivery Address"
-        onChange={handleChange}
-        required
-      />
-      <input
-        type="text"
-        name="contact"
-        placeholder="Contact Number"
-        onChange={handleChange}
-        required
-      />
+      <h2>🧾 Checkout</h2>
+      <input type="text" name="name" placeholder="Full Name" onChange={handleChange} required />
+      <input type="text" name="address" placeholder="Delivery Address" onChange={handleChange} required />
+      <input type="text" name="contact" placeholder="Contact Number" onChange={handleChange} required />
       
       <select name="payment" onChange={handleChange}>
         <option value="COD">Cash on Delivery</option>
@@ -79,39 +93,19 @@ const Checkout = () => {
         <option value="Card">Debit/Credit Card</option>
       </select>
 
-      {/* Button to trigger Geocoding */}
       <button onClick={handleLocation} className="location-button">
-        Get Location
+        📍 Get Location
       </button>
-      <button onClick={handleOrderConfirm} className="confirm-button">
-        Confirm Order
+
+      <button
+        onClick={handleOrderConfirm}
+        className="confirm-button"
+        disabled={loading}
+      >
+        {loading ? "Placing Order..." : "Confirm Order"}
       </button>
     </div>
   );
-};
-
-// Google Maps Geocoding API: Convert address to latitude and longitude
-const getCoordinatesFromAddress = async (address) => {
-  const geocoder = new window.google.maps.Geocoder();
-
-  try {
-    const results = await new Promise((resolve, reject) => {
-      geocoder.geocode({ address: address }, (results, status) => {
-        if (status === "OK") {
-          const lat = results[0].geometry.location.lat();
-          const lng = results[0].geometry.location.lng();
-          resolve({ lat, lng });
-        } else {
-          reject("Geocode was not successful for the following reason: " + status);
-        }
-      });
-    });
-
-    return { lat: results.lat, lng: results.lng };
-  } catch (error) {
-    console.error("Error fetching coordinates:", error);
-    return { lat: null, lng: null }; // Handle case where coordinates are not found
-  }
 };
 
 export default Checkout;
