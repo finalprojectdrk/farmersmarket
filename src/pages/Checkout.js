@@ -5,7 +5,7 @@ import { collection, addDoc } from "firebase/firestore";
 import { LoadScript } from "@react-google-maps/api";
 import "./Checkout.css";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with your actual API key
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -15,6 +15,7 @@ const Checkout = () => {
     contact: "",
     payment: "COD",
   });
+
   const [location, setLocation] = useState({ latitude: null, longitude: null });
   const [loading, setLoading] = useState(false);
 
@@ -63,11 +64,17 @@ const Checkout = () => {
       return;
     }
 
+    const crop = localStorage.getItem("selectedCrop") || "Unknown";
+    const buyer = localStorage.getItem("buyerEmail") || "anonymous@example.com";
+
     setLoading(true);
     try {
       await addDoc(collection(db, "supplyChainOrders"), {
         ...details,
         location,
+        locationAddress: details.address,
+        crop,
+        buyer,
         status: "Pending",
         transport: "Not Assigned",
         createdAt: new Date(),
@@ -87,10 +94,28 @@ const Checkout = () => {
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
       <div className="checkout-container">
         <h2>🧾 Checkout</h2>
-        <input type="text" name="name" placeholder="Full Name" onChange={handleChange} required />
-        <input type="text" name="address" placeholder="Delivery Address" onChange={handleChange} required />
-        <input type="text" name="contact" placeholder="Contact Number" onChange={handleChange} required />
-        
+        <input
+          type="text"
+          name="name"
+          placeholder="Full Name"
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="text"
+          name="address"
+          placeholder="Delivery Address"
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="text"
+          name="contact"
+          placeholder="Contact Number"
+          onChange={handleChange}
+          required
+        />
+
         <select name="payment" onChange={handleChange}>
           <option value="COD">Cash on Delivery</option>
           <option value="UPI">UPI Payment</option>
