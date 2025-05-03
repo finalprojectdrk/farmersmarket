@@ -5,7 +5,7 @@ import { collection, addDoc } from "firebase/firestore";
 import { LoadScript } from "@react-google-maps/api";
 import "./Checkout.css";
 
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with your actual API key
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your actual API key
 
 const Checkout = () => {
   const navigate = useNavigate();
