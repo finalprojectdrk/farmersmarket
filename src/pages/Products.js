@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../auth"; // Your custom user auth hook
+import { useAuth } from "../auth"; // Custom hook for current user
 import "./Products.css";
 
 const products = [
@@ -42,32 +42,28 @@ const Products = () => {
   const navigate = useNavigate();
 
   const categories = ["All", "Grains", "Vegetables", "Root Vegetables", "Pulses", "Leafy Greens"];
-
-  const filteredProducts = products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (selectedCategory === "All" || product.category === selectedCategory)
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (selectedCategory === "All" || product.category === selectedCategory)
   );
 
   const addToCart = async (product) => {
-    if (!user) return alert("Please log in to add items to your cart.");
-
+    if (!user) return alert("Login required.");
     try {
       await addDoc(collection(db, "carts"), {
         ...product,
         userId: user.uid,
-        quantity: 1,
-        addedAt: serverTimestamp(),
+        addedAt: new Date(),
       });
-      alert(`✅ ${product.name} added to cart!`);
+      alert("✅ Added to cart!");
     } catch (err) {
-      console.error("Error adding to cart:", err);
-      alert("❌ Something went wrong while adding to cart.");
+      console.error("Failed to add to cart:", err);
+      alert("❌ Failed to add.");
     }
   };
 
   const goToCart = () => {
-    if (!user) return alert("Please log in to view your cart.");
+    if (!user) return alert("Login required.");
     navigate("/checkout");
   };
 
@@ -105,10 +101,8 @@ const Products = () => {
           <div className="product-card" key={product.id}>
             <img src={product.image} alt={product.name} className="product-image" />
             <h3>{product.name}</h3>
-            <p>₹{product.price}/kg</p>
-            <button className="buy-button" onClick={() => addToCart(product)}>
-              Add to Cart
-            </button>
+            <p>{product.price}</p>
+            <button className="buy-button" onClick={() => addToCart(product)}>Add to Cart</button>
           </div>
         ))}
       </div>
