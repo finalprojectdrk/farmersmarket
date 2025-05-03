@@ -28,6 +28,7 @@ const FarmerDashboard = () => {
   const recordsPerPage = 10;
   const productsPerPage = 5;
 
+  // Fetch real-time crop prices data
   useEffect(() => {
     const fetchCropPrices = async () => {
       try {
@@ -56,6 +57,7 @@ const FarmerDashboard = () => {
     fetchCropPrices();
   }, []);
 
+  // Fetch products from the database
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -80,6 +82,7 @@ const FarmerDashboard = () => {
     fetchProducts();
   }, []);
 
+  // Update the current date and time every second
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentDateTime(new Date().toLocaleString());
@@ -87,6 +90,7 @@ const FarmerDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Handle deletion of product
   const handleDelete = async (productId) => {
     if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
@@ -97,6 +101,7 @@ const FarmerDashboard = () => {
     }
   };
 
+  // Handle crop price prediction
   const handlePredictPrices = async () => {
     if (!selectedCrop.trim()) {
       alert("Please enter a crop name for prediction.");
@@ -154,12 +159,14 @@ const FarmerDashboard = () => {
     ],
   };
 
+  // Filter the crop prices based on user input
   const filteredData = allCropPrices.filter(
     (p) =>
       p.crop.toLowerCase().includes(filter.toLowerCase()) ||
       p.market.toLowerCase().includes(filter.toLowerCase())
   );
 
+  // Paginate the filtered data
   const currentData = filteredData.slice(
     (currentPage - 1) * recordsPerPage,
     currentPage * recordsPerPage
