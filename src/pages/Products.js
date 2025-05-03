@@ -5,7 +5,7 @@ import { db } from "../firebase";
 import { useAuth } from "../auth"; // Custom hook for current user (create if needed)
 import "./Products.css";
 
-const user = useAuth();
+
 
 
 const products = [
