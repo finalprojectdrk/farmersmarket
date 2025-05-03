@@ -14,7 +14,7 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your API key
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace this!
 
 const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [orders, setOrders] = useState([]);
@@ -25,16 +25,15 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "supplyChainOrders"),
-      (querySnapshot) => {
-        const fetchedOrders = querySnapshot.docs.map((doc) => ({
+      (snapshot) => {
+        const orderData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setOrders(fetchedOrders);
+        setOrders(orderData);
         setLoading(false);
       }
     );
-
     return () => unsubscribe();
   }, []);
 
@@ -42,13 +41,11 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
     await updateDoc(doc(db, "supplyChainOrders", orderId), {
       status: newStatus,
     });
-    alert("Status updated.");
   };
 
   const deleteOrder = async (orderId) => {
-    if (window.confirm("Delete this delivered order?")) {
+    if (window.confirm("Are you sure to delete this delivered order?")) {
       await deleteDoc(doc(db, "supplyChainOrders", orderId));
-      alert("Order deleted.");
     }
   };
 
@@ -66,9 +63,8 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         [`${fieldName}Address`]: address,
         [`${fieldName}Location`]: { latitude: lat, longitude: lng },
       });
-      alert(`${fieldName} location updated.`);
     } else {
-      alert("Invalid address.");
+      alert("Invalid address or not found.");
     }
   };
 
@@ -89,35 +85,40 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const renderPolyline = (order) => {
     const points = [];
 
-    if (order.originLocation)
+    if (order.originLocation) {
       points.push({
         lat: order.originLocation.latitude,
         lng: order.originLocation.longitude,
       });
+    }
 
-    if (order.location)
+    if (order.location) {
       points.push({
         lat: order.location.latitude,
         lng: order.location.longitude,
       });
+    }
 
-    return points.length >= 2 ? (
-      <Polyline
-        path={points}
-        options={{
-          strokeColor: "#4285F4",
-          strokeOpacity: 0.8,
-          strokeWeight: 4,
-        }}
-      />
-    ) : null;
+    if (points.length >= 2) {
+      return (
+        <Polyline
+          path={points}
+          options={{
+            strokeColor: "#FF0000",
+            strokeOpacity: 0.8,
+            strokeWeight: 4,
+          }}
+        />
+      );
+    }
+    return null;
   };
 
   return (
     <div style={styles.container}>
-      <h2>🌾 Supply Chain Management</h2>
+      <h2>🌾 Supply Chain Dashboard</h2>
       {loading ? (
-        <p>Loading...</p>
+        <p>Loading orders...</p>
       ) : (
         <>
           <table style={styles.table}>
@@ -133,13 +134,15 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id}>
-                  <td>{order.crop}</td>
-                  <td>{order.buyer}</td>
-                  <td style={styles.status[order.status]}>{order.status}</td>
+                  <td>{order.crop || "N/A"}</td>
+                  <td>{order.buyer || "N/A"}</td>
+                  <td style={styles.status[order.status] || {}}>
+                    {order.status}
+                  </td>
                   <td>
                     <input
                       type="text"
-                      placeholder="Farmer address"
+                      placeholder="Enter your address"
                       value={
                         addressInputs[order.id]?.origin ||
                         order.originAddress ||
@@ -248,23 +251,13 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 const styles = {
   container: {
     padding: "20px",
-    background: "#f0f4f8",
-    borderRadius: "8px",
+    backgroundColor: "#f9f9f9",
     fontFamily: "Arial, sans-serif",
-  },
-  mapStyle: {
-    width: "100%",
-    height: "500px",
-    marginTop: "20px",
-    borderRadius: "10px",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
     background: "#fff",
-    borderRadius: "8px",
-    overflow: "hidden",
     boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
   },
   input: {
@@ -277,7 +270,6 @@ const styles = {
     backgroundColor: "#4CAF50",
     color: "white",
     border: "none",
-    cursor: "pointer",
     borderRadius: "4px",
   },
   deleteBtn: {
@@ -287,7 +279,6 @@ const styles = {
     padding: "5px 8px",
     border: "none",
     borderRadius: "4px",
-    cursor: "pointer",
   },
   trackBtn: {
     marginLeft: "10px",
@@ -296,13 +287,18 @@ const styles = {
     padding: "5px 8px",
     border: "none",
     borderRadius: "4px",
-    cursor: "pointer",
   },
   status: {
-    Pending: { color: "red", fontWeight: "bold" },
-    "In Transit": { color: "orange", fontWeight: "bold" },
-    Shipped: { color: "blue", fontWeight: "bold" },
+    Pending: { color: "orange", fontWeight: "bold" },
+    "In Transit": { color: "blue", fontWeight: "bold" },
+    Shipped: { color: "purple", fontWeight: "bold" },
     Delivered: { color: "green", fontWeight: "bold" },
+  },
+  mapStyle: {
+    height: "500px",
+    width: "100%",
+    marginTop: "20px",
+    borderRadius: "10px",
   },
 };
 
