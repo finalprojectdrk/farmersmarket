@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { db, auth } from "../firebase";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { Line } from "react-chartjs-2";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
 import "./FarmerDashboard.css";
+
+// Register necessary chart components
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 const FarmerDashboard = () => {
   const [cropPrices, setCropPrices] = useState([]);
@@ -18,6 +23,7 @@ const FarmerDashboard = () => {
   const [predictionData, setPredictionData] = useState(null);
   const [selectedCrop, setSelectedCrop] = useState("");
   const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState(null);
 
   const recordsPerPage = 10;
   const productsPerPage = 5;
@@ -99,7 +105,9 @@ const FarmerDashboard = () => {
 
     try {
       setPredictionLoading(true);
+      setPredictionError(null);
       setPredictionData(null);
+
       const response = await fetch(`https://predictprice.onrender.com/predict`, {
         method: "POST",
         headers: {
@@ -110,7 +118,7 @@ const FarmerDashboard = () => {
 
       const data = await response.json();
       if (data.error) {
-        alert(data.error);
+        setPredictionError(data.error);
         return;
       }
 
@@ -126,10 +134,24 @@ const FarmerDashboard = () => {
       });
     } catch (error) {
       console.error("Prediction error:", error);
-      alert("Failed to fetch prediction.");
+      setPredictionError("Failed to fetch prediction.");
     } finally {
       setPredictionLoading(false);
     }
+  };
+
+  // Prepare data for the chart (predicted prices)
+  const chartData = {
+    labels: predictionData ? predictionData.dates : [],
+    datasets: [
+      {
+        label: `Predicted Price for ${selectedCrop}`,
+        data: predictionData ? predictionData.prices.map((price) => price.toFixed(2)) : [],
+        fill: false,
+        borderColor: "rgb(75, 192, 192)",
+        tension: 0.1,
+      },
+    ],
   };
 
   const filteredData = allCropPrices.filter(
@@ -181,6 +203,8 @@ const FarmerDashboard = () => {
           {predictionLoading ? "Predicting..." : "Predict Prices"}
         </button>
 
+        {predictionError && <div className="error">{predictionError}</div>}
+
         {predictionData && (
           <div className="prediction-results">
             <h4>Prediction for {predictionData.crop} (Next 7 Days)</h4>
@@ -200,6 +224,11 @@ const FarmerDashboard = () => {
                 ))}
               </tbody>
             </table>
+
+            {/* Graph for Predicted Prices */}
+            <div style={{ marginTop: "20px" }}>
+              <Line data={chartData} options={{ responsive: true, plugins: { title: { display: true, text: "Predicted Prices for Next 7 Days" } } }} />
+            </div>
           </div>
         )}
       </div>
