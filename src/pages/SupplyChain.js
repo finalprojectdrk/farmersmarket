@@ -45,18 +45,24 @@ const SupplyChain = () => {
       ) : (
         <div style={styles.mapContainer}>
           {/* Google Map */}
-          <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
+          <LoadScript googleMapsApiKey="AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo">
             <GoogleMap
               mapContainerStyle={styles.mapContainerStyle}
               center={{ lat: 12.9716, lng: 77.5946 }} // Default center, can be dynamic
               zoom={10}
             >
               {orders.map((order) => (
-                <Marker
-                  key={order.id}
-                  position={order.location} // Use order location for marker
-                  title={order.crop}
-                />
+                // Only show the marker if the order has location data
+                order.location && (
+                  <Marker
+                    key={order.id}
+                    position={{
+                      lat: order.location.latitude,
+                      lng: order.location.longitude,
+                    }}
+                    title={order.crop}
+                  />
+                )
               ))}
             </GoogleMap>
           </LoadScript>
@@ -87,6 +93,7 @@ const SupplyChain = () => {
                     >
                       <option value="Pending">Pending</option>
                       <option value="In Transit">In Transit</option>
+                      <option value="Shipped">Shipped</option> {/* Added "Shipped" */}
                       <option value="Delivered">Delivered</option>
                     </select>
                   </td>
@@ -126,6 +133,7 @@ const styles = {
   status: {
     Pending: { color: "red", fontWeight: "bold" },
     "In Transit": { color: "orange", fontWeight: "bold" },
+    Shipped: { color: "blue", fontWeight: "bold" }, // Style for "Shipped"
     Delivered: { color: "green", fontWeight: "bold" },
   },
 };
