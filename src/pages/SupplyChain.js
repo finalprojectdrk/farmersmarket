@@ -92,6 +92,13 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
       });
     }
 
+    if (order.trackingLocation) {
+      points.push({
+        lat: order.trackingLocation.latitude,
+        lng: order.trackingLocation.longitude,
+      });
+    }
+
     if (order.location) {
       points.push({
         lat: order.location.latitude,
@@ -224,6 +231,16 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                           }}
                           label="Farmer"
                           icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                        />
+                      )}
+                      {order.trackingLocation && (
+                        <Marker
+                          position={{
+                            lat: order.trackingLocation.latitude,
+                            lng: order.trackingLocation.longitude,
+                          }}
+                          label="Tracking"
+                          icon="http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
                         />
                       )}
                       {order.location && (
