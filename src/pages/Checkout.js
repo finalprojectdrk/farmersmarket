@@ -50,6 +50,20 @@ const Checkout = () => {
     }
   };
 
+  const handleRemove = (index) => {
+    const updated = [...cart];
+    updated.splice(index, 1);
+    setCart(updated);
+    localStorage.setItem("orders", JSON.stringify(updated));
+  };
+
+  const calculateTotal = () => {
+    return cart.reduce((sum, item) => {
+      const price = parseFloat(item.price.replace(/[₹\/kg]/g, ""));
+      return sum + price;
+    }, 0);
+  };
+
   const handleOrderConfirm = async () => {
     if (!details.name || !details.address || !details.contact) return alert("Please fill all fields");
     if (!location.latitude) return alert("Please fetch location");
@@ -62,7 +76,7 @@ const Checkout = () => {
             ...details,
             buyer: details.name,
             crop: item.name,
-            farmer: item.farmer,
+            farmer: item.farmer || "Unknown", // in case farmer info missing
             location,
             status: "Pending",
             transport: "Not Assigned",
@@ -84,16 +98,36 @@ const Checkout = () => {
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
       <div className="checkout-container">
         <h2>🧾 Checkout</h2>
-        <input name="name" placeholder="Name" onChange={handleChange} required />
-        <input name="address" placeholder="Delivery Address" onChange={handleChange} required />
-        <input name="contact" placeholder="Contact" onChange={handleChange} required />
-        <select name="payment" onChange={handleChange}>
+
+        <input name="name" placeholder="Name" onChange={handleChange} value={details.name} required />
+        <input name="address" placeholder="Delivery Address" onChange={handleChange} value={details.address} required />
+        <input name="contact" placeholder="Contact" onChange={handleChange} value={details.contact} required />
+        <select name="payment" onChange={handleChange} value={details.payment}>
           <option value="COD">Cash on Delivery</option>
           <option value="UPI">UPI</option>
         </select>
+
         <button onClick={handleLocation}>📍 Get Location</button>
-        <button onClick={handleOrderConfirm} disabled={loading}>
-          {loading ? "Placing..." : "Confirm Order"}
+
+        <div className="cart-summary">
+          <h3>🛒 Your Cart</h3>
+          {cart.length === 0 ? (
+            <p>No items in cart.</p>
+          ) : (
+            <ul>
+              {cart.map((item, index) => (
+                <li key={index}>
+                  <span>{item.name} - {item.price}</span>
+                  <button className="remove-btn" onClick={() => handleRemove(index)}>❌ Remove</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p><strong>Total:</strong> ₹{calculateTotal()}</p>
+        </div>
+
+        <button onClick={handleOrderConfirm} disabled={loading || cart.length === 0}>
+          {loading ? "Placing..." : "✅ Confirm Order"}
         </button>
       </div>
     </LoadScript>
