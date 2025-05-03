@@ -107,14 +107,17 @@ const FarmerDashboard = () => {
       setPredictionError(null);
       setPredictionData(null);
 
-      const response = await fetch(`https://predictprice.onrender.com/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ crop: selectedCrop.trim() }),
-      });
+   const response = await fetch("https://predictprice.onrender.com/predict", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ crop: selectedCrop.trim() }),
+});
 
-      const data = await response.json();
-      if (data.error || !Array.isArray(data.predicted_prices)) {
+const data = await response.json();
+console.log("API RESPONSE:", data);  // 👈 Add this
+
+
+         if (data.error || !Array.isArray(data.predicted_prices)) {
         throw new Error(data.error || "Invalid prediction response");
       }
 
