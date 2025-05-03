@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase"; // Make sure the path is correct
-import { collection, onSnapshot } from "firebase/firestore"; // Firestore functions
+import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore"; // Firestore functions
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 
 const SupplyChain = () => {
@@ -22,6 +22,21 @@ const SupplyChain = () => {
     return () => unsubscribe();
   }, []);
 
+  // Function to update the order status
+  const updateOrderStatus = async (orderId, newStatus) => {
+    const orderRef = doc(db, "supplyChainOrders", orderId);
+
+    try {
+      await updateDoc(orderRef, {
+        status: newStatus,
+      });
+      alert(`Order status updated to ${newStatus}`);
+    } catch (error) {
+      console.error("Error updating status: ", error);
+      alert("Failed to update status.");
+    }
+  };
+
   return (
     <div style={styles.container}>
       <h2>🚜 Supply Chain Management</h2>
@@ -30,7 +45,7 @@ const SupplyChain = () => {
       ) : (
         <div style={styles.mapContainer}>
           {/* Google Map */}
-          <LoadScript googleMapsApiKey="AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo">
+          <LoadScript googleMapsApiKey="YOUR_GOOGLE_MAPS_API_KEY">
             <GoogleMap
               mapContainerStyle={styles.mapContainerStyle}
               center={{ lat: 12.9716, lng: 77.5946 }} // Default center, can be dynamic
@@ -54,6 +69,7 @@ const SupplyChain = () => {
                 <th>Buyer</th>
                 <th>Status</th>
                 <th>Transport</th>
+                <th>Actions</th> {/* Add a column for actions */}
               </tr>
             </thead>
             <tbody>
@@ -63,6 +79,17 @@ const SupplyChain = () => {
                   <td>{order.buyer}</td>
                   <td style={styles.status[order.status]}>{order.status}</td>
                   <td>{order.transport}</td>
+                  <td>
+                    {/* Dropdown to change status */}
+                    <select
+                      value={order.status}
+                      onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In Transit">In Transit</option>
+                      <option value="Delivered">Delivered</option>
+                    </select>
+                  </td>
                 </tr>
               ))}
             </tbody>
