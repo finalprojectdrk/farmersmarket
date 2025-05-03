@@ -15,8 +15,9 @@ const Checkout = () => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const user = useAuth(); // Custom hook that returns the user
+  const user = useAuth(); // Current logged-in user
 
+  // Fetch cart items from Firestore
   useEffect(() => {
     if (!user) return;
 
@@ -26,9 +27,10 @@ const Checkout = () => {
       setCart(items);
     });
 
-    return () => unsubscribe(); // Cleanup subscription when component unmounts
+    return () => unsubscribe();
   }, [user]);
 
+  // Geocode address into lat/lng
   const getCoordinatesFromAddress = async (address) => {
     const geocoder = new window.google.maps.Geocoder();
     return new Promise((resolve, reject) => {
@@ -45,10 +47,12 @@ const Checkout = () => {
     });
   };
 
+  // Form field change
   const handleChange = (e) => {
     setDetails({ ...details, [e.target.name]: e.target.value });
   };
 
+  // Geocode address and store coordinates
   const handleLocation = async () => {
     if (!details.address) return alert("Enter address first");
     try {
@@ -60,6 +64,7 @@ const Checkout = () => {
     }
   };
 
+  // Confirm and place order
   const handleOrderConfirm = async () => {
     if (!details.name || !details.address || !details.contact) return alert("Please fill all fields");
     if (!location.latitude) return alert("Please fetch location");
@@ -71,17 +76,16 @@ const Checkout = () => {
       await Promise.all(
         cart.map(async (item) => {
           await addDoc(collection(db, "supplyChainOrders"), {
-            ...details,
             buyer: details.name,
             crop: item.name,
-            farmer: item.farmer,
+            farmer: user.displayName || user.email || "Unknown Farmer",
             location,
             status: "Pending",
             transport: "Not Assigned",
             createdAt: new Date(),
           });
 
-          // Delete item from cart after order
+          // Remove item from cart
           await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
         })
       );
@@ -110,6 +114,7 @@ const Checkout = () => {
         <button onClick={handleOrderConfirm} disabled={loading}>
           {loading ? "Placing..." : "Confirm Order"}
         </button>
+
         <div className="cart-summary">
           <h3>Cart Summary</h3>
           <ul>
