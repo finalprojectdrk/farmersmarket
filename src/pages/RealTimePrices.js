@@ -107,29 +107,25 @@ const FarmerDashboard = () => {
       setPredictionError(null);
       setPredictionData(null);
 
-   const response = await fetch("https://predictprice.onrender.com/predict", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ crop: selectedCrop.trim() }),
-});
+      const response = await fetch(`https://predictprice.onrender.com/predict`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ crop: selectedCrop.trim() })
+      });
 
-const data = await response.json();
-console.log("API RESPONSE:", data);  // 👈 Add this
+      const data = await response.json();
+      console.log("API RESPONSE:", data); // Helpful for debugging
 
-
-         if (data.error || !Array.isArray(data.predicted_prices)) {
+      if (data.error || !Array.isArray(data.prices) || !Array.isArray(data.dates)) {
         throw new Error(data.error || "Invalid prediction response");
       }
 
-      const today = new Date();
-      const next7Dates = Array.from({ length: 7 }, (_, i) =>
-        new Date(today.getTime() + i * 86400000).toLocaleDateString()
-      );
-
       setPredictionData({
         crop: selectedCrop.trim(),
-        prices: data.predicted_prices,
-        dates: next7Dates,
+        prices: data.prices,
+        dates: data.dates,
       });
     } catch (error) {
       console.error("Prediction error:", error);
@@ -144,9 +140,7 @@ console.log("API RESPONSE:", data);  // 👈 Add this
     datasets: [
       {
         label: `Predicted Price for ${selectedCrop}`,
-        data: predictionData
-          ? predictionData.prices.map((p) => (typeof p === "number" ? parseFloat(p.toFixed(2)) : 0))
-          : [],
+        data: predictionData ? predictionData.prices.map((price) => price.toFixed(2)) : [],
         fill: false,
         borderColor: "rgb(75, 192, 192)",
         tension: 0.1,
@@ -219,12 +213,7 @@ console.log("API RESPONSE:", data);  // 👈 Add this
                 {predictionData.dates.map((date, index) => (
                   <tr key={index}>
                     <td>{date}</td>
-                    <td>
-                      ₹{" "}
-                      {predictionData.prices[index] !== undefined
-                        ? parseFloat(predictionData.prices[index]).toFixed(2)
-                        : "N/A"}
-                    </td>
+                    <td>₹ {predictionData.prices[index].toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
