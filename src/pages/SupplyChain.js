@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase"; // Make sure the path is correct
-import { collection, getDocs, onSnapshot } from "firebase/firestore"; // Firestore functions
+import { collection, onSnapshot } from "firebase/firestore"; // Firestore functions
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 
 const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
@@ -27,26 +28,46 @@ const SupplyChain = () => {
       {loading ? (
         <div className="spinner">Loading...</div>
       ) : (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th>Crop</th>
-              <th>Buyer</th>
-              <th>Status</th>
-              <th>Transport</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order.id}>
-                <td>{order.crop}</td>
-                <td>{order.buyer}</td>
-                <td style={styles.status[order.status]}>{order.status}</td>
-                <td>{order.transport}</td>
+        <div style={styles.mapContainer}>
+          {/* Google Map */}
+          <LoadScript googleMapsApiKey="AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo">
+            <GoogleMap
+              mapContainerStyle={styles.mapContainerStyle}
+              center={{ lat: 12.9716, lng: 77.5946 }} // Default center, can be dynamic
+              zoom={10}
+            >
+              {orders.map((order) => (
+                <Marker
+                  key={order.id}
+                  position={order.location} // Use order location for marker
+                  title={order.crop}
+                />
+              ))}
+            </GoogleMap>
+          </LoadScript>
+
+          {/* Order Table */}
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th>Crop</th>
+                <th>Buyer</th>
+                <th>Status</th>
+                <th>Transport</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id}>
+                  <td>{order.crop}</td>
+                  <td>{order.buyer}</td>
+                  <td style={styles.status[order.status]}>{order.status}</td>
+                  <td>{order.transport}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -60,6 +81,15 @@ const styles = {
     borderRadius: "8px",
     boxShadow: "0px 2px 5px rgba(0, 0, 0, 0.1)",
     textAlign: "center",
+  },
+  mapContainer: {
+    width: "100%",
+    height: "400px",
+    marginBottom: "20px",
+  },
+  mapContainerStyle: {
+    width: "100%",
+    height: "100%",
   },
   table: {
     width: "100%",
