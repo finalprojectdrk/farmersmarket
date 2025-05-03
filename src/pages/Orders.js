@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { useAuth } from "../auth"; // Assuming useAuth gives you the logged-in user
+import { useAuth } from "../auth";
 import "./Orders.css";
 
 const Orders = () => {
-  const user = useAuth(); // Assuming useAuth returns the logged-in user
+  const user = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,14 +16,10 @@ const Orders = () => {
     }
 
     const ordersRef = collection(db, "supplyChainOrders");
-    const q = query(ordersRef, where("buyer", "==", user.uid)); // Query for orders by buyer UID
+    const q = query(ordersRef, where("buyerId", "==", user.uid)); // ✅ Match on UID
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
-        console.log("No orders found");
-      }
       const ordersData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      console.log("Fetched orders:", ordersData); // Check fetched data
       setOrders(ordersData);
       setLoading(false);
     });
@@ -47,7 +43,12 @@ const Orders = () => {
               <h3>{order.crop}</h3>
               <p>Farmer: {order.farmer}</p>
               <p>Status: {order.status}</p>
-              <p>Created At: {new Date(order.createdAt.seconds * 1000).toLocaleDateString()}</p>
+              <p>
+                Created At:{" "}
+                {order.createdAt?.seconds
+                  ? new Date(order.createdAt.seconds * 1000).toLocaleDateString()
+                  : "N/A"}
+              </p>
             </div>
           ))}
         </div>
