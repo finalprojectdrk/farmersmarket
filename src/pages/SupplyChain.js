@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { db } from "../firebase";
+import React, { useEffect, useState } from "react";
 import {
   collection,
   onSnapshot,
@@ -7,158 +6,169 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
+import { db } from "../firebase";
 import {
   GoogleMap,
   LoadScript,
   Marker,
-  DirectionsService,
-  DirectionsRenderer,
+  Polyline,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your real key
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your API key
 
-const SupplyChain = () => {
+const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [addressInputs, setAddressInputs] = useState({});
   const [trackingOrderId, setTrackingOrderId] = useState(null);
-  const [directionsResponse, setDirectionsResponse] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "supplyChainOrders"), (querySnapshot) => {
-      const fetched = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setOrders(fetched);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      collection(db, "supplyChainOrders"),
+      (querySnapshot) => {
+        const fetchedOrders = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setOrders(fetchedOrders);
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
 
-  const updateOrderStatus = async (orderId, newStatus) => {
-    try {
-      await updateDoc(doc(db, "supplyChainOrders", orderId), {
-        status: newStatus,
-      });
-      alert(`Order status updated to ${newStatus}`);
-    } catch (error) {
-      console.error("Error updating status:", error);
-    }
+  const handleStatusChange = async (orderId, newStatus) => {
+    await updateDoc(doc(db, "supplyChainOrders", orderId), {
+      status: newStatus,
+    });
+    alert("Status updated.");
   };
 
   const deleteOrder = async (orderId) => {
-    if (window.confirm("Are you sure you want to delete this order?")) {
-      try {
-        await deleteDoc(doc(db, "supplyChainOrders", orderId));
-        alert("Order deleted");
-      } catch (error) {
-        console.error("Error deleting order:", error);
-      }
+    if (window.confirm("Delete this delivered order?")) {
+      await deleteDoc(doc(db, "supplyChainOrders", orderId));
+      alert("Order deleted.");
     }
   };
 
-  const handleTrack = (order) => {
-    setTrackingOrderId(order.id);
-
-    if (order.originLocation && order.location) {
-      setDirectionsResponse(null); // Reset first
-    }
+  const handleAddressInput = (e, orderId, field) => {
+    setAddressInputs((prev) => ({
+      ...prev,
+      [orderId]: { ...prev[orderId], [field]: e.target.value },
+    }));
   };
 
-  const handleDirectionsCallback = (response) => {
-    if (response !== null && response.status === "OK") {
-      setDirectionsResponse(response);
+  const geocodeAndSave = async (orderId, address, fieldName) => {
+    const { lat, lng } = await getCoordinatesFromAddress(address);
+    if (lat && lng) {
+      await updateDoc(doc(db, "supplyChainOrders", orderId), {
+        [`${fieldName}Address`]: address,
+        [`${fieldName}Location`]: { latitude: lat, longitude: lng },
+      });
+      alert(`${fieldName} location updated.`);
     } else {
-      console.error("Directions request failed", response);
+      alert("Invalid address.");
     }
   };
 
-  const selectedOrder = orders.find((o) => o.id === trackingOrderId);
+  const getCoordinatesFromAddress = async (address) => {
+    const geocoder = new window.google.maps.Geocoder();
+    return new Promise((resolve) => {
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === "OK") {
+          const location = results[0].geometry.location;
+          resolve({ lat: location.lat(), lng: location.lng() });
+        } else {
+          resolve({ lat: null, lng: null });
+        }
+      });
+    });
+  };
+
+  const renderPolyline = (order) => {
+    const points = [];
+
+    if (order.originLocation)
+      points.push({
+        lat: order.originLocation.latitude,
+        lng: order.originLocation.longitude,
+      });
+
+    if (order.location)
+      points.push({
+        lat: order.location.latitude,
+        lng: order.location.longitude,
+      });
+
+    return points.length >= 2 ? (
+      <Polyline
+        path={points}
+        options={{
+          strokeColor: "#4285F4",
+          strokeOpacity: 0.8,
+          strokeWeight: 4,
+        }}
+      />
+    ) : null;
+  };
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.heading}>🚜 Supply Chain Tracker</h2>
-
+      <h2>🌾 Supply Chain Management</h2>
       {loading ? (
-        <div>Loading orders...</div>
+        <p>Loading...</p>
       ) : (
         <>
-          <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-            <GoogleMap
-              mapContainerStyle={styles.map}
-              center={{ lat: 12.9716, lng: 77.5946 }}
-              zoom={6}
-            >
-              {orders.map((order) => (
-                <React.Fragment key={order.id}>
-                  {order.originLocation && (
-                    <Marker
-                      position={{
-                        lat: order.originLocation.latitude,
-                        lng: order.originLocation.longitude,
-                      }}
-                      label={{ text: order.farmer || "Farmer", color: "white" }}
-                      icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
-                    />
-                  )}
-                  {order.location && (
-                    <Marker
-                      position={{
-                        lat: order.location.latitude,
-                        lng: order.location.longitude,
-                      }}
-                      label={{ text: order.buyer || "Buyer", color: "white" }}
-                      icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
-                    />
-                  )}
-                </React.Fragment>
-              ))}
-
-              {selectedOrder &&
-                selectedOrder.originLocation &&
-                selectedOrder.location && (
-                  <DirectionsService
-                    options={{
-                      destination: {
-                        lat: selectedOrder.location.latitude,
-                        lng: selectedOrder.location.longitude,
-                      },
-                      origin: {
-                        lat: selectedOrder.originLocation.latitude,
-                        lng: selectedOrder.originLocation.longitude,
-                      },
-                      travelMode: "DRIVING",
-                    }}
-                    callback={handleDirectionsCallback}
-                  />
-                )}
-
-              {directionsResponse && (
-                <DirectionsRenderer directions={directionsResponse} />
-              )}
-            </GoogleMap>
-          </LoadScript>
-
           <table style={styles.table}>
             <thead>
               <tr>
                 <th>Crop</th>
                 <th>Buyer</th>
                 <th>Status</th>
+                <th>Farmer Address</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id}>
-                  <td>{order.crop || "-"}</td>
-                  <td>{order.buyer || "-"}</td>
-                  <td style={styles.status[order.status] || {}}>{order.status}</td>
+                  <td>{order.crop}</td>
+                  <td>{order.buyer}</td>
+                  <td style={styles.status[order.status]}>{order.status}</td>
+                  <td>
+                    <input
+                      type="text"
+                      placeholder="Farmer address"
+                      value={
+                        addressInputs[order.id]?.origin ||
+                        order.originAddress ||
+                        ""
+                      }
+                      onChange={(e) =>
+                        handleAddressInput(e, order.id, "origin")
+                      }
+                      style={styles.input}
+                    />
+                    <button
+                      onClick={() =>
+                        geocodeAndSave(
+                          order.id,
+                          addressInputs[order.id]?.origin,
+                          "origin"
+                        )
+                      }
+                      style={styles.saveBtn}
+                    >
+                      Save
+                    </button>
+                  </td>
                   <td>
                     <select
                       value={order.status}
-                      onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                      onChange={(e) =>
+                        handleStatusChange(order.id, e.target.value)
+                      }
                     >
                       <option value="Pending">Pending</option>
                       <option value="In Transit">In Transit</option>
@@ -166,26 +176,69 @@ const SupplyChain = () => {
                       <option value="Delivered">Delivered</option>
                     </select>
 
-                    <button
-                      style={styles.button}
-                      onClick={() => handleTrack(order)}
-                    >
-                      Track
-                    </button>
+                    {currentUserRole === "farmer" &&
+                      order.status === "Delivered" && (
+                        <button
+                          onClick={() => deleteOrder(order.id)}
+                          style={styles.deleteBtn}
+                        >
+                          Delete
+                        </button>
+                      )}
 
-                    {order.status === "Delivered" && (
-                      <button
-                        style={{ ...styles.button, backgroundColor: "red" }}
-                        onClick={() => deleteOrder(order.id)}
-                      >
-                        Delete
-                      </button>
-                    )}
+                    <button
+                      onClick={() =>
+                        setTrackingOrderId(
+                          trackingOrderId === order.id ? null : order.id
+                        )
+                      }
+                      style={styles.trackBtn}
+                    >
+                      {trackingOrderId === order.id ? "Hide Map" : "Track"}
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {trackingOrderId && (
+            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+              <GoogleMap
+                mapContainerStyle={styles.mapStyle}
+                center={{ lat: 12.9716, lng: 77.5946 }}
+                zoom={6}
+              >
+                {orders
+                  .filter((order) => order.id === trackingOrderId)
+                  .map((order) => (
+                    <React.Fragment key={order.id}>
+                      {order.originLocation && (
+                        <Marker
+                          position={{
+                            lat: order.originLocation.latitude,
+                            lng: order.originLocation.longitude,
+                          }}
+                          label="Farmer"
+                          icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                        />
+                      )}
+                      {order.location && (
+                        <Marker
+                          position={{
+                            lat: order.location.latitude,
+                            lng: order.location.longitude,
+                          }}
+                          label="Buyer"
+                          icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                        />
+                      )}
+                      {renderPolyline(order)}
+                    </React.Fragment>
+                  ))}
+              </GoogleMap>
+            </LoadScript>
+          )}
         </>
       )}
     </div>
@@ -195,40 +248,61 @@ const SupplyChain = () => {
 const styles = {
   container: {
     padding: "20px",
+    background: "#f0f4f8",
+    borderRadius: "8px",
     fontFamily: "Arial, sans-serif",
-    backgroundColor: "#f4f4f4",
   },
-  heading: {
-    textAlign: "center",
-    color: "#333",
-    marginBottom: "20px",
-  },
-  map: {
+  mapStyle: {
     width: "100%",
     height: "500px",
-    marginBottom: "20px",
+    marginTop: "20px",
     borderRadius: "10px",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    backgroundColor: "#fff",
-    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+    background: "#fff",
+    borderRadius: "8px",
+    overflow: "hidden",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+  },
+  input: {
+    padding: "5px",
+    width: "150px",
+    marginRight: "5px",
+  },
+  saveBtn: {
+    padding: "5px 8px",
+    backgroundColor: "#4CAF50",
+    color: "white",
+    border: "none",
+    cursor: "pointer",
+    borderRadius: "4px",
+  },
+  deleteBtn: {
+    marginLeft: "10px",
+    backgroundColor: "red",
+    color: "white",
+    padding: "5px 8px",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  trackBtn: {
+    marginLeft: "10px",
+    backgroundColor: "#2196F3",
+    color: "white",
+    padding: "5px 8px",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
   },
   status: {
     Pending: { color: "red", fontWeight: "bold" },
     "In Transit": { color: "orange", fontWeight: "bold" },
     Shipped: { color: "blue", fontWeight: "bold" },
     Delivered: { color: "green", fontWeight: "bold" },
-  },
-  button: {
-    marginLeft: "8px",
-    padding: "5px 10px",
-    backgroundColor: "#4CAF50",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
   },
 };
 
