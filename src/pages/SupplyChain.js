@@ -14,7 +14,7 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace this!
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with yours
 
 const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [orders, setOrders] = useState([]);
@@ -41,6 +41,40 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
     await updateDoc(doc(db, "supplyChainOrders", orderId), {
       status: newStatus,
     });
+
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    const trackingUrl = `https://your-app-domain.com/track?id=${orderId}`;
+
+    // ✅ Send Email
+    try {
+      await fetch("/sendEmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: order.buyerEmail,
+          subject: `Order ${newStatus}`,
+          message: `Hi ${order.buyer}, your crop order (${order.crop}) is now "${newStatus}".\nTrack here: ${trackingUrl}`,
+        }),
+      });
+    } catch (err) {
+      console.error("Email error:", err);
+    }
+
+    // ✅ Send SMS
+    try {
+      await fetch("/sendSMS", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: order.buyerPhone,
+          message: `Order (${order.crop}) is "${newStatus}". Track: ${trackingUrl}`,
+        }),
+      });
+    } catch (err) {
+      console.error("SMS error:", err);
+    }
   };
 
   const deleteOrder = async (orderId) => {
@@ -128,89 +162,100 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         <p>Loading orders...</p>
       ) : (
         <>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th>Crop</th>
-                <th>Buyer</th>
-                <th>Status</th>
-                <th>Farmer Address</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id}>
-                  <td>{order.crop || "N/A"}</td>
-                  <td>{order.buyer || "N/A"}</td>
-                  <td style={styles.status[order.status] || {}}>
-                    {order.status}
-                  </td>
-                  <td>
-                    <input
-                      type="text"
-                      placeholder="Enter your address"
-                      value={
-                        addressInputs[order.id]?.origin ||
-                        order.originAddress ||
-                        ""
-                      }
-                      onChange={(e) =>
-                        handleAddressInput(e, order.id, "origin")
-                      }
-                      style={styles.input}
-                    />
-                    <button
-                      onClick={() =>
-                        geocodeAndSave(
-                          order.id,
-                          addressInputs[order.id]?.origin,
-                          "origin"
-                        )
-                      }
-                      style={styles.saveBtn}
-                    >
-                      Save
-                    </button>
-                  </td>
-                  <td>
-                    <select
-                      value={order.status}
-                      onChange={(e) =>
-                        handleStatusChange(order.id, e.target.value)
-                      }
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="In Transit">In Transit</option>
-                      <option value="Shipped">Shipped</option>
-                      <option value="Delivered">Delivered</option>
-                    </select>
-
-                    {currentUserRole === "farmer" &&
-                      order.status === "Delivered" && (
-                        <button
-                          onClick={() => deleteOrder(order.id)}
-                          style={styles.deleteBtn}
-                        >
-                          Delete
-                        </button>
-                      )}
-
-                    <button
-                      onClick={() =>
-                        setTrackingOrderId(
-                          trackingOrderId === order.id ? null : order.id
-                        )
-                      }
-                      style={styles.trackBtn}
-                    >
-                      {trackingOrderId === order.id ? "Hide Map" : "Track"}
-                    </button>
-                  </td>
+          <div style={{ overflowX: "auto" }}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th>Crop</th>
+                  <th>Buyer</th>
+                  <th>Status</th>
+                  <th>Farmer Address</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order.id}>
+                    <td>
+                      <div style={styles.imageBox}>
+                        <img
+                          src={order.imageURL || "https://via.placeholder.com/60"}
+                          alt="Crop"
+                          style={styles.cropImage}
+                        />
+                        <span>{order.crop || "N/A"}</span>
+                      </div>
+                    </td>
+                    <td>{order.buyer || "N/A"}</td>
+                    <td style={styles.status[order.status] || {}}>
+                      {order.status}
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        placeholder="Enter your address"
+                        value={
+                          addressInputs[order.id]?.origin ||
+                          order.originAddress ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          handleAddressInput(e, order.id, "origin")
+                        }
+                        style={styles.input}
+                      />
+                      <button
+                        onClick={() =>
+                          geocodeAndSave(
+                            order.id,
+                            addressInputs[order.id]?.origin,
+                            "origin"
+                          )
+                        }
+                        style={styles.saveBtn}
+                      >
+                        Save
+                      </button>
+                    </td>
+                    <td>
+                      <select
+                        value={order.status}
+                        onChange={(e) =>
+                          handleStatusChange(order.id, e.target.value)
+                        }
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="In Transit">In Transit</option>
+                        <option value="Shipped">Shipped</option>
+                        <option value="Delivered">Delivered</option>
+                      </select>
+
+                      {currentUserRole === "farmer" &&
+                        order.status === "Delivered" && (
+                          <button
+                            onClick={() => deleteOrder(order.id)}
+                            style={styles.deleteBtn}
+                          >
+                            Delete
+                          </button>
+                        )}
+
+                      <button
+                        onClick={() =>
+                          setTrackingOrderId(
+                            trackingOrderId === order.id ? null : order.id
+                          )
+                        }
+                        style={styles.trackBtn}
+                      >
+                        {trackingOrderId === order.id ? "Hide Map" : "Track"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {trackingOrderId && (
             <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
@@ -273,6 +318,7 @@ const styles = {
   },
   table: {
     width: "100%",
+    minWidth: "600px",
     borderCollapse: "collapse",
     background: "#fff",
     boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
@@ -316,6 +362,18 @@ const styles = {
     width: "100%",
     marginTop: "20px",
     borderRadius: "10px",
+  },
+  cropImage: {
+    width: "60px",
+    height: "60px",
+    borderRadius: "8px",
+    objectFit: "cover",
+    marginBottom: "5px",
+  },
+  imageBox: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
   },
 };
 
