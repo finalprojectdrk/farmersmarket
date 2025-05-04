@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { GoogleMap, Marker, LoadScript } from "@react-google-maps/api";
 import "./Orders.css";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
 
 const mapContainerStyle = {
   width: "100%",
@@ -118,22 +118,26 @@ const Orders = () => {
 
               return (
                 <div className="order-card" key={order.id}>
+                  {/* Product Image */}
                   {order.image && (
-                    <img
-                      src={order.image}
-                      alt={order.name || order.crop}
-                      className="order-image"
-                    />
+                    <div className="order-image-wrapper">
+                      <img
+                        src={order.image}
+                        alt={order.name || order.crop}
+                        className="order-image"
+                      />
+                    </div>
                   )}
 
                   <div className="order-details">
                     <h3>{order.crop}</h3>
-                    <p><strong>Order ID:</strong> {order.orderId}</p>
+                    <p><strong>Order ID:</strong> {order.id}</p>
                     <p>Quantity: {order.quantity}</p>
                     <p>Price: {displayPrice}</p>
                     <p>Status: <strong>{order.status || "Pending"}</strong></p>
                     <p>Tracking: <strong>{order.tracking || "Not available"}</strong></p>
 
+                    {/* Tracking History */}
                     {history.length > 0 && (
                       <div className="tracking-history">
                         <h4>Tracking History:</h4>
@@ -150,6 +154,7 @@ const Orders = () => {
                       </div>
                     )}
 
+                    {/* Farmer Controls */}
                     {user.role === "farmer" && (
                       <>
                         <div className="status-buttons">
@@ -177,6 +182,7 @@ const Orders = () => {
                       </>
                     )}
 
+                    {/* Google Map + Track Order */}
                     {loc?.latitude && loc?.longitude && (
                       <>
                         <GoogleMap
