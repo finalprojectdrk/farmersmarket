@@ -1,3 +1,4 @@
+// ... top imports remain unchanged
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -20,7 +21,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addressInputs, setAddressInputs] = useState({});
-  const [trackingOrderId, setTrackingOrderId] = useState(null);
+  const [trackingOrderIds, setTrackingOrderIds] = useState({});
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -47,7 +48,6 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 
     const trackingUrl = `https://your-app-domain.com/track?id=${orderId}`;
 
-    // ✅ Send Email
     try {
       await fetch("/sendEmail", {
         method: "POST",
@@ -62,7 +62,6 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
       console.error("Email error:", err);
     }
 
-    // ✅ Send SMS
     try {
       await fetch("/sendSMS", {
         method: "POST",
@@ -114,6 +113,27 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         }
       });
     });
+  };
+
+  const detectAndSaveLocation = (orderId) => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        await updateDoc(doc(db, "supplyChainOrders", orderId), {
+          originLocation: { latitude, longitude },
+          originAddress: "Detected Location",
+        });
+      });
+    } else {
+      alert("Geolocation is not supported.");
+    }
+  };
+
+  const toggleTracking = (orderId) => {
+    setTrackingOrderIds((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
   };
 
   const renderPolyline = (order) => {
@@ -175,136 +195,147 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.id}>
-                    <td>
-                      <div style={styles.imageBox}>
-                        {/* Display crop image */}
-                        <img
-                          src={order.imageURL || "https://via.placeholder.com/60"}
-                          alt="Crop"
-                          style={styles.cropImage}
+                  <React.Fragment key={order.id}>
+                    <tr>
+                      <td>
+                        <div style={styles.imageBox}>
+                          <img
+                            src={order.imageURL || "https://via.placeholder.com/60"}
+                            alt="Crop"
+                            style={styles.cropImage}
+                          />
+                          <span>{order.crop || "N/A"}</span>
+                        </div>
+                      </td>
+                      <td>{order.buyer || "N/A"}</td>
+                      <td style={styles.status[order.status] || {}}>
+                        {order.status}
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          placeholder="Enter your address"
+                          value={
+                            addressInputs[order.id]?.origin ||
+                            order.originAddress ||
+                            ""
+                          }
+                          onChange={(e) =>
+                            handleAddressInput(e, order.id, "origin")
+                          }
+                          style={styles.input}
                         />
-                        <span>{order.crop || "N/A"}</span>
-                      </div>
-                    </td>
-                    <td>{order.buyer || "N/A"}</td>
-                    <td style={styles.status[order.status] || {}}>
-                      {order.status}
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        placeholder="Enter your address"
-                        value={
-                          addressInputs[order.id]?.origin ||
-                          order.originAddress ||
-                          ""
-                        }
-                        onChange={(e) =>
-                          handleAddressInput(e, order.id, "origin")
-                        }
-                        style={styles.input}
-                      />
-                      <button
-                        onClick={() =>
-                          geocodeAndSave(
-                            order.id,
-                            addressInputs[order.id]?.origin,
-                            "origin"
-                          )
-                        }
-                        style={styles.saveBtn}
-                      >
-                        Save
-                      </button>
-                    </td>
-                    <td>
-                      <select
-                        value={order.status}
-                        onChange={(e) =>
-                          handleStatusChange(order.id, e.target.value)
-                        }
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="In Transit">In Transit</option>
-                        <option value="Shipped">Shipped</option>
-                        <option value="Delivered">Delivered</option>
-                      </select>
+                        <button
+                          onClick={() =>
+                            geocodeAndSave(
+                              order.id,
+                              addressInputs[order.id]?.origin,
+                              "origin"
+                            )
+                          }
+                          style={styles.saveBtn}
+                        >
+                          Save
+                        </button>
+                        <br />
+                        <button
+                          onClick={() => detectAndSaveLocation(order.id)}
+                          style={{ ...styles.saveBtn, marginTop: "5px", backgroundColor: "#009688" }}
+                        >
+                          Detect Location
+                        </button>
+                      </td>
+                      <td>
+                        <select
+                          value={order.status}
+                          onChange={(e) =>
+                            handleStatusChange(order.id, e.target.value)
+                          }
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="In Transit">In Transit</option>
+                          <option value="Shipped">Shipped</option>
+                          <option value="Delivered">Delivered</option>
+                        </select>
 
-                      {currentUserRole === "farmer" &&
-                        order.status === "Delivered" && (
-                          <button
-                            onClick={() => deleteOrder(order.id)}
-                            style={styles.deleteBtn}
-                          >
-                            Delete
-                          </button>
-                        )}
+                        {currentUserRole === "farmer" &&
+                          order.status === "Delivered" && (
+                            <button
+                              onClick={() => deleteOrder(order.id)}
+                              style={styles.deleteBtn}
+                            >
+                              Delete
+                            </button>
+                          )}
 
-                      <button
-                        onClick={() =>
-                          setTrackingOrderId(
-                            trackingOrderId === order.id ? null : order.id
-                          )
-                        }
-                        style={styles.trackBtn}
-                      >
-                        {trackingOrderId === order.id ? "Hide Map" : "Track"}
-                      </button>
-                    </td>
-                  </tr>
+                        <button
+                          onClick={() => toggleTracking(order.id)}
+                          style={styles.trackBtn}
+                        >
+                          {trackingOrderIds[order.id] ? "Hide Map" : "Track"}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {trackingOrderIds[order.id] && (
+                      <tr>
+                        <td colSpan="5">
+                          <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+                            <GoogleMap
+                              mapContainerStyle={styles.mapStyle}
+                              center={{
+                                lat:
+                                  order.originLocation?.latitude ||
+                                  order.location?.latitude ||
+                                  20,
+                                lng:
+                                  order.originLocation?.longitude ||
+                                  order.location?.longitude ||
+                                  78,
+                              }}
+                              zoom={6}
+                            >
+                              {order.originLocation && (
+                                <Marker
+                                  position={{
+                                    lat: order.originLocation.latitude,
+                                    lng: order.originLocation.longitude,
+                                  }}
+                                  label="Farmer"
+                                  icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                                />
+                              )}
+                              {order.trackingLocation && (
+                                <Marker
+                                  position={{
+                                    lat: order.trackingLocation.latitude,
+                                    lng: order.trackingLocation.longitude,
+                                  }}
+                                  label="Tracking"
+                                  icon="http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
+                                />
+                              )}
+                              {order.location && (
+                                <Marker
+                                  position={{
+                                    lat: order.location.latitude,
+                                    lng: order.location.longitude,
+                                  }}
+                                  label="Buyer"
+                                  icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                                />
+                              )}
+                              {renderPolyline(order)}
+                            </GoogleMap>
+                          </LoadScript>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
           </div>
-
-          {trackingOrderId && (
-            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-              <GoogleMap
-                mapContainerStyle={styles.mapStyle}
-                center={{ lat: 12.9716, lng: 77.5946 }}
-                zoom={6}
-              >
-                {orders
-                  .filter((order) => order.id === trackingOrderId)
-                  .map((order) => (
-                    <React.Fragment key={order.id}>
-                      {order.originLocation && (
-                        <Marker
-                          position={{
-                            lat: order.originLocation.latitude,
-                            lng: order.originLocation.longitude,
-                          }}
-                          label="Farmer"
-                          icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
-                        />
-                      )}
-                      {order.trackingLocation && (
-                        <Marker
-                          position={{
-                            lat: order.trackingLocation.latitude,
-                            lng: order.trackingLocation.longitude,
-                          }}
-                          label="Tracking"
-                          icon="http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
-                        />
-                      )}
-                      {order.location && (
-                        <Marker
-                          position={{
-                            lat: order.location.latitude,
-                            lng: order.location.longitude,
-                          }}
-                          label="Buyer"
-                          icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
-                        />
-                      )}
-                      {renderPolyline(order)}
-                    </React.Fragment>
-                  ))}
-              </GoogleMap>
-            </LoadScript>
-          )}
         </>
       )}
     </div>
@@ -335,6 +366,7 @@ const styles = {
     color: "white",
     border: "none",
     borderRadius: "4px",
+    cursor: "pointer",
   },
   deleteBtn: {
     marginLeft: "10px",
@@ -343,6 +375,7 @@ const styles = {
     padding: "5px 8px",
     border: "none",
     borderRadius: "4px",
+    cursor: "pointer",
   },
   trackBtn: {
     marginLeft: "10px",
@@ -351,6 +384,7 @@ const styles = {
     padding: "5px 8px",
     border: "none",
     borderRadius: "4px",
+    cursor: "pointer",
   },
   status: {
     Pending: { color: "orange", fontWeight: "bold" },
@@ -359,7 +393,7 @@ const styles = {
     Delivered: { color: "green", fontWeight: "bold" },
   },
   mapStyle: {
-    height: "500px",
+    height: "400px",
     width: "100%",
     marginTop: "20px",
     borderRadius: "10px",
