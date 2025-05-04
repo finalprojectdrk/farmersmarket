@@ -11,10 +11,11 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../auth";
+import { useNavigate } from "react-router-dom";
 import { GoogleMap, Marker, LoadScript } from "@react-google-maps/api";
 import "./Orders.css";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace this
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
 const mapContainerStyle = {
   width: "100%",
@@ -28,6 +29,7 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [trackingInputs, setTrackingInputs] = useState({});
+  const navigate = useNavigate();
 
   const syncOrders = async () => {
     if (!user?.uid) return;
@@ -123,8 +125,10 @@ const Orders = () => {
                       className="order-image"
                     />
                   )}
+
                   <div className="order-details">
                     <h3>{order.crop}</h3>
+                    <p><strong>Order ID:</strong> {order.id}</p>
                     <p>Quantity: {order.quantity}</p>
                     <p>Price: {displayPrice}</p>
                     <p>Status: <strong>{order.status || "Pending"}</strong></p>
@@ -136,7 +140,10 @@ const Orders = () => {
                         <ul>
                           {history.map((entry, idx) => (
                             <li key={idx}>
-                              {entry.message} - {new Date(entry.timestamp?.seconds * 1000).toLocaleString()}
+                              {entry.message} -{" "}
+                              {new Date(
+                                entry.timestamp?.seconds * 1000
+                              ).toLocaleString()}
                             </li>
                           ))}
                         </ul>
@@ -171,15 +178,23 @@ const Orders = () => {
                     )}
 
                     {loc?.latitude && loc?.longitude && (
-                      <GoogleMap
-                        mapContainerStyle={mapContainerStyle}
-                        center={{ lat: loc.latitude, lng: loc.longitude }}
-                        zoom={14}
-                      >
-                        <Marker
-                          position={{ lat: loc.latitude, lng: loc.longitude }}
-                        />
-                      </GoogleMap>
+                      <>
+                        <GoogleMap
+                          mapContainerStyle={mapContainerStyle}
+                          center={{ lat: loc.latitude, lng: loc.longitude }}
+                          zoom={14}
+                        >
+                          <Marker
+                            position={{ lat: loc.latitude, lng: loc.longitude }}
+                          />
+                        </GoogleMap>
+                        <button
+                          onClick={() => navigate(`/track/${order.id}`)}
+                          className="track-btn"
+                        >
+                          🚚 Track Order
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
