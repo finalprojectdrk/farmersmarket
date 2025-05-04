@@ -74,14 +74,18 @@ const Register = () => {
       localStorage.setItem("userEmail", userEmail);
       localStorage.setItem("phonenumber", phone);
 
-      // 5️⃣ Send SMS and Email
+      // 5️⃣ Send SMS (Independent of email)
       const formattedPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
+      try {
+        await sendSMS(
+          formattedPhone,
+          `Hi ${name}, registration successful! Welcome to Farmers Market. 🌾`
+        );
+      } catch (smsError) {
+        console.error("SMS failed:", smsError.message);
+      }
 
-      await sendSMS(
-        formattedPhone,
-        `Hi ${name}, registration successful! Welcome to Farmers Market. 🌾`
-      );
-
+      // 6️⃣ Send Email (Always happens)
       await sendEmail(
         name,
         userEmail,
