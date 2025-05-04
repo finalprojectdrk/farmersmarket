@@ -9,6 +9,33 @@
   text-align: center;
 }
 
+.order-card {
+  display: flex;
+  gap: 16px;
+  border: 1px solid #ccc;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: #f9f9f9;
+  flex-wrap: wrap;
+}
+
+.order-image-wrapper {
+  flex: 1 1 200px;
+  max-width: 200px;
+}
+
+.order-image {
+  width: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.order-details {
+  flex: 2 1 300px;
+}
+
+
 /* Page Title */
 .orders-container h2 {
   color: #2e7d32;
