@@ -128,7 +128,7 @@ const Orders = () => {
 
                   <div className="order-details">
                     <h3>{order.crop}</h3>
-                    <p><strong>Order ID:</strong> {order.orderid}</p>
+                    <p><strong>Order ID:</strong> {order.orderId}</p>
                     <p>Quantity: {order.quantity}</p>
                     <p>Price: {displayPrice}</p>
                     <p>Status: <strong>{order.status || "Pending"}</strong></p>
