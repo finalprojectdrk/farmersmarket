@@ -178,6 +178,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                   <tr key={order.id}>
                     <td>
                       <div style={styles.imageBox}>
+                        {/* Display crop image */}
                         <img
                           src={order.imageURL || "https://via.placeholder.com/60"}
                           alt="Crop"
