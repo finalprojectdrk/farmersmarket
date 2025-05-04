@@ -57,7 +57,7 @@ const Products = () => {
       await addDoc(itemRef, {
         name: product.name,
         price: product.price,
-        image: product.image,
+        image: product.image, // Store image path here
         quantity: 1,
         category: product.category,
         addedAt: new Date(),
