@@ -48,8 +48,8 @@ const CheckoutForm = () => {
           id: docSnap.id,
           name: data.name || "Unnamed",
           price: data.price || 0,
-          contact: data.mobile,
           quantity: data.quantity || 1,
+          image: data.image || "", // Store image path
         };
       });
       setCart(items);
@@ -92,7 +92,6 @@ const CheckoutForm = () => {
 
   const sendNotification = async (orderId) => {
     try {
-      // Buyer SMS
       const cleanedPhone = details.contact.startsWith("+91")
         ? details.contact
         : `+91${details.contact}`;
@@ -102,7 +101,6 @@ const CheckoutForm = () => {
         `Hi ${details.name}, your order (${orderId}) has been placed successfully!`
       );
 
-      // Buyer Email
       if (user?.email) {
         await sendEmail(
           user.email,
@@ -111,7 +109,6 @@ const CheckoutForm = () => {
         );
       }
 
-      // Notify all farmers
       const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
       const farmerSnapshot = await getDocs(farmersQuery);
 
@@ -130,8 +127,6 @@ const CheckoutForm = () => {
       });
 
       await Promise.all(notifyFarmers);
-
-      console.log(`📩 Notifications sent for Order ID: ${orderId}`);
     } catch (error) {
       console.error("Error sending notifications:", error);
     }
@@ -167,9 +162,10 @@ const CheckoutForm = () => {
             transport: "Not Assigned",
             createdAt: new Date(),
             payment: details.payment,
-            quantity: item.quantity || 1,
+            quantity: item.quantity,
             price: item.price,
             contact: details.contact,
+            image: item.image || "", // Save image path for display in Orders/SupplyChain
           });
 
           await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
@@ -213,6 +209,7 @@ const CheckoutForm = () => {
         <ul>
           {cart.map((item) => (
             <li key={item.id}>
+              <img src={item.image} alt={item.name} width={40} height={40} style={{ marginRight: "10px" }} />
               {item.name} - ₹{item.price} x {item.quantity}{" "}
               <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
               <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
