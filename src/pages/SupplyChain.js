@@ -1,5 +1,5 @@
-// SupplyChain.js
 
+// SupplyChain.js (Frontend)
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -16,7 +16,7 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with env var in prod!
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace securely
 
 const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [orders, setOrders] = useState([]);
@@ -46,8 +46,8 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phoneNumber: order.buyerPhone,
-          message: `Hi ${order.buyer}, your order (${order.crop}) status is now "${newStatus}". Track here: ${trackingUrl}. Farmer: ${order.farmerName}, Mobile: ${order.farmerPhone}`,
+          phoneNumber: order.buyerPhone, // Correct key expected by backend
+          message: \`Hi \${order.buyer}, your order (\${order.crop}) status is now "\${newStatus}". Track here: \${trackingUrl}. Farmer: \${order.farmerName}, Mobile: \${order.farmerPhone}\`,
         }),
       });
     } catch (err) {
@@ -61,7 +61,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `Order ID ${orderId} status has changed. Please check your dashboard.`,
+          message: \`Order ID \${orderId} status has changed. Please check your dashboard.\`,
         }),
       });
     } catch (err) {
@@ -77,10 +77,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
       status: newStatus,
     });
 
-    // Send SMS to buyer with farmer details
     await sendSMSToBuyer(order, newStatus);
-
-    // Notify all farmers about order ID status change
     await notifyAllFarmers(orderId);
   };
 
@@ -348,7 +345,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                             lng: order.location.longitude,
                           }}
                           label="Buyer"
-                          icon="http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+                          icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
                         />
                       )}
                       {renderPolyline(order)}
@@ -366,64 +363,63 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 const styles = {
   container: {
     padding: 20,
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    fontFamily: "Arial, sans-serif",
   },
   table: {
-    borderCollapse: "collapse",
     width: "100%",
-    minWidth: 900,
-  },
-  cropImage: {
-    maxWidth: 80,
-    maxHeight: 60,
-    borderRadius: 8,
-    marginRight: 8,
-    verticalAlign: "middle",
+    borderCollapse: "collapse",
   },
   imageBox: {
     display: "flex",
     alignItems: "center",
+    gap: 8,
+  },
+  cropImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
   },
   status: {
-    Pending: { color: "#c0392b", fontWeight: "bold" },
-    "In Transit": { color: "#2980b9", fontWeight: "bold" },
-    Shipped: { color: "#f39c12", fontWeight: "bold" },
-    Delivered: { color: "#27ae60", fontWeight: "bold" },
+    Pending: { color: "orange", fontWeight: "bold" },
+    "In Transit": { color: "blue", fontWeight: "bold" },
+    Shipped: { color: "purple", fontWeight: "bold" },
+    Delivered: { color: "green", fontWeight: "bold" },
   },
   saveBtn: {
-    padding: "4px 8px",
-    marginBottom: "5px",
-    backgroundColor: "#2ecc71",
-    border: "none",
+    margin: "4px 0",
+    backgroundColor: "#007bff",
     color: "#fff",
-    borderRadius: 4,
+    border: "none",
+    padding: "4px 8px",
     cursor: "pointer",
+    borderRadius: 4,
   },
   detectBtn: {
-    padding: "4px 8px",
-    backgroundColor: "#3498db",
-    border: "none",
+    margin: "4px 0",
+    backgroundColor: "#28a745",
     color: "#fff",
-    borderRadius: 4,
+    border: "none",
+    padding: "4px 8px",
     cursor: "pointer",
+    borderRadius: 4,
   },
   deleteBtn: {
-    marginLeft: 5,
-    padding: "4px 8px",
-    backgroundColor: "#e74c3c",
-    border: "none",
+    backgroundColor: "#dc3545",
     color: "#fff",
-    borderRadius: 4,
+    border: "none",
+    padding: "4px 8px",
     cursor: "pointer",
+    borderRadius: 4,
+    marginLeft: 8,
   },
   trackBtn: {
-    marginLeft: 5,
-    padding: "4px 8px",
-    backgroundColor: "#8e44ad",
-    border: "none",
+    backgroundColor: "#6c757d",
     color: "#fff",
-    borderRadius: 4,
+    border: "none",
+    padding: "4px 8px",
     cursor: "pointer",
+    borderRadius: 4,
+    marginLeft: 8,
   },
   mapStyle: {
     width: "100%",
