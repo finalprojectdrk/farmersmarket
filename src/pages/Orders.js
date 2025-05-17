@@ -3,14 +3,10 @@ import {
   collection,
   onSnapshot,
   query,
-  where,
-  doc,
-  updateDoc,
-  getDoc,
+  where
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../auth";
-import { sendSMS } from "../utils/sms";
 import { GoogleMap, DirectionsRenderer, LoadScript } from "@react-google-maps/api";
 import "./Orders.css";
 
@@ -42,18 +38,7 @@ const Orders = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const handleStatusChange = async (orderId, newStatus, buyerContact, buyerName) => {
-    const orderRef = doc(db, "supplyChainOrders", orderId);
-    await updateDoc(orderRef, { status: newStatus });
-
-    const cleanedPhone = buyerContact.startsWith("+91") ? buyerContact : `+91${buyerContact}`;
-    const message = `Hi ${buyerName}, your order ${orderId} status has been updated to: ${newStatus}`;
-    await sendSMS(cleanedPhone, message);
-
-    alert(`📩 SMS sent to buyer. Order status changed to ${newStatus}`);
-  };
-
-  const trackRoute = async (order) => {
+  const trackRoute = (order) => {
     if (!order?.location?.latitude || !order?.location?.longitude) {
       alert("Missing location data.");
       return;
@@ -64,17 +49,9 @@ const Orders = () => {
       lng: order.location.longitude,
     };
 
-    const orderDoc = await getDoc(doc(db, "supplyChainOrders", order.id));
-    const data = orderDoc.data();
-
-    if (!data) {
-      alert("Order data not found.");
-      return;
-    }
-
     const dest = {
-      lat: data.location.latitude,
-      lng: data.location.longitude,
+      lat: order.location.latitude,
+      lng: order.location.longitude,
     };
 
     const directionsService = new window.google.maps.DirectionsService();
@@ -119,19 +96,6 @@ const Orders = () => {
                   <DirectionsRenderer directions={directions[order.id]} />
                 </GoogleMap>
               )}
-              <div className="status-buttons">
-                {["In Transit", "Delivered"].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() =>
-                      handleStatusChange(order.id, status, order.contact, order.buyer)
-                    }
-                    className={order.status === status ? "active-status" : ""}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
             </div>
           ))
         )}
