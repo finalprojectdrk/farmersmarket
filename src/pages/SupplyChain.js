@@ -240,7 +240,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                       </div>
                     </td>
                     <td>{order.buyer || "N/A"}</td>
-                    <td>{order.originAddress || "N/A"}</td>
+                    <td>{order.address || "N/A"}</td>
                     <td>{order.contact || "N/A"}</td>
                     <td style={styles.status[order.status] || { fontWeight: "bold" }}>
                       {order.status}
