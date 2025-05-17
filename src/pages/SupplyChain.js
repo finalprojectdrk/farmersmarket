@@ -7,13 +7,11 @@ import {
   doc,
   updateDoc,
   getDoc,
-  getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../auth";
 import { sendSMS } from "../utils/sms";
 import { GoogleMap, DirectionsRenderer, LoadScript } from "@react-google-maps/api";
-import "./SupplyChain.css";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
@@ -28,7 +26,6 @@ const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [directions, setDirections] = useState({});
 
-  // Fetch all orders where farmerId == current user id
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -44,70 +41,41 @@ const SupplyChain = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // Helper: Notify all farmers when order status changes
-  const notifyFarmers = async (orderId, newStatus, currentFarmerName) => {
-    try {
-      const farmersSnapshot = await getDocs(
-        query(collection(db, "users"), where("role", "==", "farmer"))
-      );
-      farmersSnapshot.forEach(async (farmerDoc) => {
-        const farmerData = farmerDoc.data();
-        if (farmerData.phone) {
-          const phone = farmerData.phone.startsWith("+91")
-            ? farmerData.phone
-            : `+91${farmerData.phone}`;
-          const message = `Order ${orderId} has been shipped by farmer ${currentFarmerName}. Status: ${newStatus}`;
-          await sendSMS(phone, message);
-        }
-      });
-    } catch (error) {
-      console.error("Error notifying farmers:", error);
-    }
-  };
+  const handleStatusChange = async (orderId, newStatus, farmerName) => {
+    const orderRef = doc(db, "supplyChainOrders", orderId);
+    await updateDoc(orderRef, { status: newStatus });
 
-  // Handle status update & notify buyer + all farmers
-  const handleStatusChange = async (orderId, newStatus, buyerPhone, buyerName) => {
-    try {
-      const orderRef = doc(db, "supplyChainOrders", orderId);
-      await updateDoc(orderRef, { status: newStatus });
+    // Notify all farmers about this status change
+    const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
+    const farmersSnapshot = await (await farmersQuery.get()).docs;
 
-      // Notify buyer
-      if (buyerPhone) {
-        const cleanedPhone = buyerPhone.startsWith("+91") ? buyerPhone : `+91${buyerPhone}`;
-        const buyerMessage = `Hi ${buyerName}, your order ${orderId} status has been updated to: ${newStatus}`;
-        await sendSMS(cleanedPhone, buyerMessage);
+    farmersSnapshot.forEach(async (farmerDoc) => {
+      const farmerData = farmerDoc.data();
+      if (farmerData.phone) {
+        const phoneNumber = farmerData.phone.startsWith("+91") ? farmerData.phone : `+91${farmerData.phone}`;
+        const msg = `Order ${orderId} has been shipped by farmer ${farmerName}`;
+        await sendSMS(phoneNumber, msg);
       }
-
-      // Notify all farmers
-      const currentFarmerName = user?.displayName || "A farmer";
-      await notifyFarmers(orderId, newStatus, currentFarmerName);
-
-      alert(`✅ Order status updated and SMS sent to buyer and all farmers.`);
-    } catch (err) {
-      console.error("Error updating status:", err);
-      alert("❌ Failed to update status.");
-    }
+    });
   };
 
-  // Track route: farmer's originLocation → buyer's location
-  const trackRoute = (order) => {
-    if (
-      !order.originLocation?.latitude ||
-      !order.originLocation?.longitude ||
-      !order.location?.latitude ||
-      !order.location?.longitude
-    ) {
-      alert("Missing location data for tracking.");
+  const trackRoute = async (order) => {
+    if (!order.farmerLocation?.latitude || !order.farmerLocation?.longitude) {
+      alert("Missing farmer location data.");
+      return;
+    }
+    if (!order.buyerLocation?.latitude || !order.buyerLocation?.longitude) {
+      alert("Missing buyer location data.");
       return;
     }
 
     const origin = {
-      lat: order.originLocation.latitude,
-      lng: order.originLocation.longitude,
+      lat: order.farmerLocation.latitude,
+      lng: order.farmerLocation.longitude,
     };
     const destination = {
-      lat: order.location.latitude,
-      lng: order.location.longitude,
+      lat: order.buyerLocation.latitude,
+      lng: order.buyerLocation.longitude,
     };
 
     const directionsService = new window.google.maps.DirectionsService();
@@ -121,77 +89,114 @@ const SupplyChain = () => {
         if (status === "OK") {
           setDirections((prev) => ({ ...prev, [order.id]: result }));
         } else {
-          alert("Failed to get directions.");
+          console.error("Directions request failed:", status);
+          alert("Failed to get directions");
         }
       }
     );
   };
 
+  // Inline styles:
+  const styles = {
+    container: {
+      maxWidth: "900px",
+      margin: "0 auto",
+      padding: "1rem",
+    },
+    orderCard: {
+      display: "flex",
+      flexWrap: "wrap",
+      border: "1px solid #ddd",
+      marginBottom: "1rem",
+      padding: "1rem",
+      borderRadius: "6px",
+      background: "#fafafa",
+      alignItems: "center",
+    },
+    orderImage: {
+      width: "180px",
+      height: "120px",
+      objectFit: "cover",
+      borderRadius: "4px",
+      marginRight: "1rem",
+      flexShrink: 0,
+    },
+    orderInfo: {
+      flex: 1,
+      minWidth: "200px",
+    },
+    statusButtons: {
+      display: "flex",
+      gap: "10px",
+      marginTop: "10px",
+      flexWrap: "wrap",
+    },
+    button: {
+      padding: "6px 12px",
+      cursor: "pointer",
+      borderRadius: "4px",
+      border: "1px solid #4caf50",
+      backgroundColor: "white",
+      color: "#4caf50",
+      fontWeight: "600",
+      transition: "background-color 0.3s, color 0.3s",
+    },
+    activeButton: {
+      backgroundColor: "#4caf50",
+      color: "white",
+    },
+  };
+
   return (
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-      <div className="supplychain-container">
-        <h2>📦 Orders You Are Handling</h2>
+      <div style={styles.container}>
+        <h2>📦 Your Orders (Supply Chain)</h2>
         {orders.length === 0 ? (
           <p>No orders assigned to you yet.</p>
         ) : (
           orders.map((order) => (
-            <div key={order.id} className="order-card">
+            <div key={order.id} style={styles.orderCard}>
               <img
                 src={order.image}
                 alt={order.crop}
-                className="order-image"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = "/placeholder-image.png"; // fallback image
-                }}
+                style={styles.orderImage}
               />
-              <div className="order-info">
+              <div style={styles.orderInfo}>
                 <h3>{order.crop}</h3>
-                <p>
-                  <strong>Order ID:</strong> {order.orderId}
-                </p>
-                <p>
-                  <strong>Status:</strong> {order.status}
-                </p>
-                <p>
-                  <strong>Quantity:</strong> {order.quantity}
-                </p>
-                <p>
-                  <strong>Price:</strong> ₹{order.price}
-                </p>
-                <p>
-                  <strong>Buyer:</strong> {order.buyer}
-                </p>
-                <p>
-                  <strong>Transport:</strong> {order.transport || "N/A"}
-                </p>
-                <button onClick={() => trackRoute(order)}>🗺️ Track Route</button>
+                <p><strong>Order ID:</strong> {order.orderId}</p>
+                <p><strong>Status:</strong> {order.status}</p>
+                <p><strong>Quantity:</strong> {order.quantity}</p>
+                <p><strong>Price:</strong> ₹{order.price}</p>
+                <p><strong>Transport:</strong> {order.transport}</p>
+                <button onClick={() => trackRoute(order)}>🗺️ Track</button>
               </div>
-
               {directions[order.id] && (
                 <GoogleMap
                   mapContainerStyle={containerStyle}
                   center={{
-                    lat: order.originLocation.latitude,
-                    lng: order.originLocation.longitude,
+                    lat: order.farmerLocation.latitude,
+                    lng: order.farmerLocation.longitude,
                   }}
                   zoom={8}
                 >
                   <DirectionsRenderer directions={directions[order.id]} />
                 </GoogleMap>
               )}
-
-              <div className="status-buttons">
-                {["In Transit", "Delivered"].map((statusOption) => (
+              <div style={styles.statusButtons}>
+                {["In Transit", "Delivered"].map((status) => (
                   <button
-                    key={statusOption}
+                    key={status}
                     onClick={() =>
-                      handleStatusChange(order.id, statusOption, order.buyerPhone, order.buyer)
+                      handleStatusChange(order.id, status, user.displayName || "Farmer")
                     }
-                    className={order.status === statusOption ? "active-status" : ""}
+                    style={{
+                      ...styles.button,
+                      ...(order.status === status ? styles.activeButton : {}),
+                    }}
                     disabled={order.status === "Delivered"}
+                    title={order.status === "Delivered" ? "Cannot change status after delivery" : ""}
                   >
-                    {statusOption}
+                    {status}
                   </button>
                 ))}
               </div>
