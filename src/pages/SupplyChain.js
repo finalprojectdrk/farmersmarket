@@ -46,7 +46,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: order.buyerPhone,
+          phone: order.contact,
           message: `Hi ${order.buyer}, your order (${order.crop}) status is now "${newStatus}". Track here: ${trackingUrl}. Farmer: ${order.farmerName}, Mobile: ${order.farmerPhone}`,
         }),
       });
@@ -240,8 +240,8 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                       </div>
                     </td>
                     <td>{order.buyer || "N/A"}</td>
-                    <td>{order.buyerAddress || "N/A"}</td>
-                    <td>{order.buyerPhone || "N/A"}</td>
+                    <td>{order.originAddress || "N/A"}</td>
+                    <td>{order.contact || "N/A"}</td>
                     <td style={styles.status[order.status] || { fontWeight: "bold" }}>
                       {order.status}
                     </td>
