@@ -14,6 +14,9 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 
+import { sendSMS } from "../utils/sms";
+import { sendEmail } from "../utils/email";
+
 const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
 const SupplyChain = ({ currentUserRole = "farmer" }) => {
@@ -48,28 +51,24 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
     const trackingUrl = `https://farmerssmarket.com/track?id=${orderId}`;
 
     try {
-      await fetch("/api/email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: order.buyerEmail,
-          subject: `Order ${newStatus}`,
-          message: `Hi ${order.buyer}, your crop order (${order.crop}) is now "${newStatus}".\nTrack here: ${trackingUrl}`,
-        }),
-      });
+      await sendEmail(
+        order.buyerEmail,
+        `Order ${newStatus}`,
+        `Hi ${order.buyer}, your crop order (${order.crop}) is now "${newStatus}".\nTrack here: ${trackingUrl}`
+      );
     } catch (err) {
       console.error("Email error:", err);
     }
 
     try {
-      await fetch("/api/sms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phoneNumber: order.buyerPhone,
-          message: `Order (${order.crop}) is "${newStatus}". Track: ${trackingUrl}`,
-        }),
-      });
+      const cleanedPhone = order.buyerPhone.startsWith("+91")
+        ? order.buyerPhone
+        : `+91${order.buyerPhone}`;
+
+      await sendSMS(
+        cleanedPhone,
+        `Order (${order.crop}) is "${newStatus}". Track: ${trackingUrl}`
+      );
     } catch (err) {
       console.error("SMS error:", err);
     }
@@ -355,70 +354,60 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 const styles = {
   container: {
     padding: 20,
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    fontFamily: "Arial, sans-serif",
+    maxWidth: 1200,
+    margin: "auto",
   },
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    marginBottom: 20,
   },
   imageBox: {
     display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-  cropImage: {
-    width: 60,
-    height: 60,
-    objectFit: "cover",
-    borderRadius: 4,
-  },
-  status: {
-    Pending: { color: "#F39C12", fontWeight: "bold" },
-    "In Transit": { color: "#2980B9", fontWeight: "bold" },
-    Shipped: { color: "#8E44AD", fontWeight: "bold" },
-    Delivered: { color: "#27AE60", fontWeight: "bold" },
-  },
-  saveBtn: {
-    padding: "5px 10px",
-    backgroundColor: "#2980B9",
-    color: "#fff",
-    border: "none",
-    borderRadius: 4,
-    cursor: "pointer",
-  },
-  detectBtn: {
-    padding: "5px 10px",
-    backgroundColor: "#27AE60",
-    color: "#fff",
-    border: "none",
-    borderRadius: 4,
-    cursor: "pointer",
-  },
-  deleteBtn: {
-    marginLeft: 8,
-    padding: "5px 10px",
-    backgroundColor: "#E74C3C",
-    color: "#fff",
-    border: "none",
-    borderRadius: 4,
-    cursor: "pointer",
-  },
-  trackBtn: {
-   
-marginLeft: 8,
-padding: "5px 10px",
-backgroundColor: "#34495E",
-color: "#fff",
-border: "none",
+alignItems: "center",
+gap: 8,
+},
+cropImage: {
+width: 60,
+height: 60,
+objectFit: "cover",
 borderRadius: 4,
+},
+status: {
+Pending: { color: "#FFA500", fontWeight: "bold" },
+"In Transit": { color: "#1E90FF", fontWeight: "bold" },
+Shipped: { color: "#FF8C00", fontWeight: "bold" },
+Delivered: { color: "#008000", fontWeight: "bold" },
+},
+saveBtn: {
+padding: "5px 10px",
+marginBottom: 5,
+cursor: "pointer",
+},
+detectBtn: {
+padding: "5px 10px",
+cursor: "pointer",
+},
+deleteBtn: {
+marginLeft: 10,
+backgroundColor: "#ff4d4f",
+color: "white",
+border: "none",
+padding: "5px 10px",
+cursor: "pointer",
+},
+trackBtn: {
+marginLeft: 10,
+backgroundColor: "#1890ff",
+color: "white",
+border: "none",
+padding: "5px 10px",
 cursor: "pointer",
 },
 mapStyle: {
-width: "100%",
 height: "400px",
+width: "100%",
 marginTop: 20,
-borderRadius: 8,
 },
 };
 
