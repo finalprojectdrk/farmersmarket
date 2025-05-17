@@ -24,6 +24,36 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [manualAddress, setManualAddress] = useState({});
   const [trackingOrderId, setTrackingOrderId] = useState(null);
 
+  const Orders = () => {
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "orders"), (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(), // includes address now
+      }));
+      setOrders(data);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <div>
+      <h2>Orders with Address</h2>
+      <ul>
+        {orders.map((order) => (
+          <li key={order.id}>
+            <strong>Order ID:</strong> {order.id}<br />
+            <strong>Address:</strong> {order.address || "No address available"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "supplyChainOrders"),
@@ -240,7 +270,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                       </div>
                     </td>
                     <td>{order.buyer || "N/A"}</td>
-                    <td>{order.address || "N/A"}</td>
+                    <td>{order.address1 || "N/A"}</td>
                     <td>{order.contact || "N/A"}</td>
                     <td style={styles.status[order.status] || { fontWeight: "bold" }}>
                       {order.status}
