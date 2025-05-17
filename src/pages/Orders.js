@@ -1,216 +1,217 @@
 import React, { useEffect, useState } from "react";
-import {
-  collection,
-  onSnapshot,
-  updateDoc,
-  doc,
-  query,
-  where,
-  getDocs,
-  setDoc,
-} from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import { useAuth } from "../auth";
-import { useNavigate } from "react-router-dom";
-import { GoogleMap, Marker, LoadScript } from "@react-google-maps/api";
-import "./Orders.css";
+import {
+  GoogleMap,
+  LoadScript,
+  Marker,
+  Polyline,
+} from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Your actual API key
 
-const mapContainerStyle = {
-  width: "100%",
-  height: "200px",
-  marginTop: "10px",
-  borderRadius: "8px",
-};
-
-const Orders = () => {
-  const user = useAuth();
+const Orders = ({ currentUserEmail }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [trackingInputs, setTrackingInputs] = useState({});
-  const navigate = useNavigate();
-
-  const syncOrders = async () => {
-    if (!user?.uid) return;
-
-    const sourceRef = collection(db, "supplyChainOrders");
-    const sourceQuery = query(sourceRef, where("buyerId", "==", user.uid));
-    const sourceSnapshot = await getDocs(sourceQuery);
-
-    for (const docSnap of sourceSnapshot.docs) {
-      const data = docSnap.data();
-      const destDocRef = doc(db, "orders", docSnap.id);
-      await setDoc(destDocRef, data, { merge: true });
-    }
-  };
+  const [trackingOrderId, setTrackingOrderId] = useState(null);
 
   useEffect(() => {
-    if (!user || !user.uid) return;
-
-    syncOrders().then(() => {
-      const ordersRef = collection(db, "supplyChainOrders");
-      const q = query(ordersRef, where("buyerId", "==", user.uid));
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const orderList = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setOrders(orderList);
+    const unsubscribe = onSnapshot(
+      collection(db, "supplyChainOrders"),
+      (snapshot) => {
+        const orderData = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((order) => order.buyerEmail === currentUserEmail); // filter by buyer
+        setOrders(orderData);
         setLoading(false);
+      }
+    );
+    return () => unsubscribe();
+  }, [currentUserEmail]);
+
+  const renderPolyline = (order) => {
+    const points = [];
+
+    if (order.originLocation) {
+      points.push({
+        lat: order.originLocation.latitude,
+        lng: order.originLocation.longitude,
       });
-
-      return () => unsubscribe();
-    });
-  }, [user]);
-
-  const updateStatus = async (orderId, status) => {
-    try {
-      const orderDoc = doc(db, "supplyChainOrders", orderId);
-      await updateDoc(orderDoc, { status });
-      alert(`Status updated to ${status}`);
-    } catch (err) {
-      console.error("Failed to update status:", err);
-      alert("Error updating status.");
     }
-  };
 
-  const handleTrackingChange = (orderId, value) => {
-    setTrackingInputs((prev) => ({ ...prev, [orderId]: value }));
-  };
-
-  const updateTracking = async (orderId) => {
-    try {
-      const value = trackingInputs[orderId];
-      const orderDoc = doc(db, "supplyChainOrders", orderId);
-      const timestamp = new Date();
-      await updateDoc(orderDoc, {
-        tracking: value,
-        lastTrackingUpdate: timestamp,
-        trackingHistory: [{ message: value, timestamp }],
+    if (order.trackingLocation) {
+      points.push({
+        lat: order.trackingLocation.latitude,
+        lng: order.trackingLocation.longitude,
       });
-      alert("Tracking updated");
-    } catch (err) {
-      console.error("Failed to update tracking:", err);
-      alert("Error updating tracking info.");
     }
+
+    if (order.location) {
+      points.push({
+        lat: order.location.latitude,
+        lng: order.location.longitude,
+      });
+    }
+
+    return points.length >= 2 ? (
+      <Polyline
+        path={points}
+        options={{
+          strokeColor: "#FF0000",
+          strokeOpacity: 0.8,
+          strokeWeight: 4,
+        }}
+      />
+    ) : null;
   };
 
   return (
-    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-      <div className="orders-container">
-        <h2>Your Orders</h2>
-        {loading ? (
-          <p>Loading orders...</p>
-        ) : orders.length === 0 ? (
-          <p>No orders found.</p>
-        ) : (
-          <div className="orders-list">
-            {orders.map((order) => {
-              const displayPrice =
-                order.price && order.price > 0
-                  ? `₹${order.price}${order.unit ? "/" + order.unit : ""}`
-                  : "Not available";
-
-              const loc = order.trackingLocation;
-              const history = order.trackingHistory || [];
-
-              return (
-                <div className="order-card" key={order.id}>
-                  {/* Product Image */}
-                  {order.image && (
-                    <div className="order-image-wrapper">
+    <div style={styles.container}>
+      <h2>📦 My Orders</h2>
+      {loading ? (
+        <p>Loading your orders...</p>
+      ) : orders.length === 0 ? (
+        <p>No orders found.</p>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th>Crop</th>
+                <th>Status</th>
+                <th>Farmer Location</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id}>
+                  <td>
+                    <div style={styles.imageBox}>
                       <img
-                        src={order.image}
-                        alt={order.name || order.crop}
-                        className="order-image"
+                        src={order.imageURL || "https://via.placeholder.com/60"}
+                        alt="Crop"
+                        style={styles.cropImage}
                       />
+                      <span>{order.crop || "N/A"}</span>
                     </div>
+                  </td>
+                  <td style={styles.status[order.status] || {}}>
+                    {order.status}
+                  </td>
+                  <td style={{ fontSize: "12px" }}>
+                    {order.originAddress || "Not yet provided"}
+                  </td>
+                  <td>
+                    <button
+                      onClick={() =>
+                        setTrackingOrderId(
+                          trackingOrderId === order.id ? null : order.id
+                        )
+                      }
+                      style={styles.trackBtn}
+                    >
+                      {trackingOrderId === order.id ? "Hide Map" : "Track"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {trackingOrderId && (
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+          <GoogleMap
+            mapContainerStyle={styles.mapStyle}
+            center={{ lat: 12.9716, lng: 77.5946 }}
+            zoom={6}
+          >
+            {orders
+              .filter((order) => order.id === trackingOrderId)
+              .map((order) => (
+                <React.Fragment key={order.id}>
+                  {order.originLocation && (
+                    <Marker
+                      position={{
+                        lat: order.originLocation.latitude,
+                        lng: order.originLocation.longitude,
+                      }}
+                      label="Farmer"
+                      icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                    />
                   )}
-
-                  <div className="order-details">
-                    <h3>{order.crop}</h3>
-                    <p><strong>Order ID:</strong> {order.id}</p>
-                    <p>Quantity: {order.quantity}</p>
-                    <p>Price: {displayPrice}</p>
-                    <p>Status: <strong>{order.status || "Pending"}</strong></p>
-                    <p>Tracking: <strong>{order.tracking || "Not available"}</strong></p>
-
-                    {/* Tracking History */}
-                    {history.length > 0 && (
-                      <div className="tracking-history">
-                        <h4>Tracking History:</h4>
-                        <ul>
-                          {history.map((entry, idx) => (
-                            <li key={idx}>
-                              {entry.message} -{" "}
-                              {new Date(
-                                entry.timestamp?.seconds * 1000
-                              ).toLocaleString()}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Farmer Controls */}
-                    {user.role === "farmer" && (
-                      <>
-                        <div className="status-buttons">
-                          <button onClick={() => updateStatus(order.id, "In Transit")}>
-                            Mark In Transit
-                          </button>
-                          <button onClick={() => updateStatus(order.id, "Delivered")}>
-                            Mark Delivered
-                          </button>
-                        </div>
-
-                        <div className="tracking-update">
-                          <input
-                            type="text"
-                            placeholder="Enter tracking info"
-                            value={trackingInputs[order.id] || ""}
-                            onChange={(e) =>
-                              handleTrackingChange(order.id, e.target.value)
-                            }
-                          />
-                          <button onClick={() => updateTracking(order.id)}>
-                            Update Tracking
-                          </button>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Google Map + Track Order */}
-                    {loc?.latitude && loc?.longitude && (
-                      <>
-                        <GoogleMap
-                          mapContainerStyle={mapContainerStyle}
-                          center={{ lat: loc.latitude, lng: loc.longitude }}
-                          zoom={14}
-                        >
-                          <Marker
-                            position={{ lat: loc.latitude, lng: loc.longitude }}
-                          />
-                        </GoogleMap>
-                        <button
-                          onClick={() => navigate(`/track/${order.id}`)}
-                          className="track-btn"
-                        >
-                          🚚 Track Order
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </LoadScript>
+                  {order.trackingLocation && (
+                    <Marker
+                      position={{
+                        lat: order.trackingLocation.latitude,
+                        lng: order.trackingLocation.longitude,
+                      }}
+                      label="Tracking"
+                      icon="http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
+                    />
+                  )}
+                  {order.location && (
+                    <Marker
+                      position={{
+                        lat: order.location.latitude,
+                        lng: order.location.longitude,
+                      }}
+                      label="You"
+                      icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                    />
+                  )}
+                  {renderPolyline(order)}
+                </React.Fragment>
+              ))}
+          </GoogleMap>
+        </LoadScript>
+      )}
+    </div>
   );
+};
+
+const styles = {
+  container: { padding: "20px", background: "#f4f4f4" },
+  table: {
+    width: "100%",
+    minWidth: "600px",
+    borderCollapse: "collapse",
+    background: "#fff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+  },
+  trackBtn: {
+    marginLeft: "5px",
+    backgroundColor: "#6A1B9A",
+    color: "white",
+    padding: "5px 8px",
+    border: "none",
+    borderRadius: "4px",
+  },
+  status: {
+    Pending: { color: "orange", fontWeight: "bold" },
+    "In Transit": { color: "blue", fontWeight: "bold" },
+    Shipped: { color: "purple", fontWeight: "bold" },
+    Delivered: { color: "green", fontWeight: "bold" },
+  },
+  mapStyle: {
+    height: "500px",
+    width: "100%",
+    marginTop: "20px",
+    borderRadius: "10px",
+  },
+  cropImage: {
+    width: "60px",
+    height: "60px",
+    borderRadius: "8px",
+    objectFit: "cover",
+  },
+  imageBox: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
 };
 
 export default Orders;
