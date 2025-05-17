@@ -39,6 +39,36 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
     return () => unsubscribe();
   }, []);
 
+  const sendSMSToBuyer = async (order, newStatus) => {
+    const trackingUrl = `https://farmerssmarket.com/track?id=${order.id}`;
+    try {
+      await fetch("/sendSMS", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: order.buyerPhone,
+          message: `Hi ${order.buyer}, your order (${order.crop}) status is now "${newStatus}". Track here: ${trackingUrl}. Farmer: ${order.farmerName}, Mobile: ${order.farmerPhone}`,
+        }),
+      });
+    } catch (err) {
+      console.error("SMS to buyer error:", err);
+    }
+  };
+
+  const notifyAllFarmers = async (orderId) => {
+    try {
+      await fetch("/notifyFarmers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Order ID ${orderId} status has changed. Please check your dashboard.`,
+        }),
+      });
+    } catch (err) {
+      console.error("Notify farmers error:", err);
+    }
+  };
+
   const handleStatusChange = async (orderId, newStatus) => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
@@ -47,34 +77,11 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
       status: newStatus,
     });
 
-    const trackingUrl = `https://farmerssmarket.com/track?id=${orderId}`;
+    // Send SMS to buyer with farmer details
+    await sendSMSToBuyer(order, newStatus);
 
-    try {
-      await fetch("/sendEmail", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: order.buyerEmail,
-          subject: `Order ${newStatus}`,
-          message: `Hi ${order.buyer}, your crop order (${order.crop}) is now "${newStatus}".\nTrack here: ${trackingUrl}`,
-        }),
-      });
-    } catch (err) {
-      console.error("Email error:", err);
-    }
-
-    try {
-      await fetch("/sendSMS", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phone: order.buyerPhone,
-          message: `Order (${order.crop}) is "${newStatus}". Track: ${trackingUrl}`,
-        }),
-      });
-    } catch (err) {
-      console.error("SMS error:", err);
-    }
+    // Notify all farmers about order ID status change
+    await notifyAllFarmers(orderId);
   };
 
   const deleteOrder = async (orderId) => {
@@ -211,6 +218,8 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                 <tr>
                   <th>Crop</th>
                   <th>Buyer</th>
+                  <th>Buyer Address</th>
+                  <th>Buyer Mobile</th>
                   <th>Status</th>
                   <th>Farmer Location</th>
                   <th>Actions</th>
@@ -221,11 +230,18 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                   <tr key={order.id}>
                     <td>
                       <div style={styles.imageBox}>
-                        <img src={order.image} alt={order.crop} className="order-image" />
+                        <img
+                          src={order.image}
+                          alt={order.crop}
+                          className="order-image"
+                          style={styles.cropImage}
+                        />
                         <span>{order.crop || "N/A"}</span>
                       </div>
                     </td>
                     <td>{order.buyer || "N/A"}</td>
+                    <td>{order.buyerAddress || "N/A"}</td>
+                    <td>{order.buyerPhone || "N/A"}</td>
                     <td style={styles.status[order.status] || { fontWeight: "bold" }}>
                       {order.status}
                     </td>
@@ -271,20 +287,17 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                         <option value="Shipped">Shipped</option>
                         <option value="Delivered">Delivered</option>
                       </select>
-                      {currentUserRole === "farmer" &&
-                        order.status === "Delivered" && (
-                          <button
-                            onClick={() => deleteOrder(order.id)}
-                            style={styles.deleteBtn}
-                          >
-                            Delete
-                          </button>
-                        )}
+                      {currentUserRole === "farmer" && order.status === "Delivered" && (
+                        <button
+                          onClick={() => deleteOrder(order.id)}
+                          style={styles.deleteBtn}
+                        >
+                          Delete
+                        </button>
+                      )}
                       <button
                         onClick={() =>
-                          setTrackingOrderId(
-                            trackingOrderId === order.id ? null : order.id
-                          )
+                          setTrackingOrderId(trackingOrderId === order.id ? null : order.id)
                         }
                         style={styles.trackBtn}
                       >
