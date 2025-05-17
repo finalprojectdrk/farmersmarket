@@ -25,14 +25,17 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [trackingOrderId, setTrackingOrderId] = useState(null);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "supplyChainOrders"), (snapshot) => {
-      const orderData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setOrders(orderData);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      collection(db, "supplyChainOrders"),
+      (snapshot) => {
+        const orderData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setOrders(orderData);
+        setLoading(false);
+      }
+    );
     return () => unsubscribe();
   }, []);
 
@@ -85,14 +88,22 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
-        const address = await getAddressFromCoordinates(coords.latitude, coords.longitude);
+        const address = await getAddressFromCoordinates(
+          coords.latitude,
+          coords.longitude
+        );
         if (address) {
           await updateDoc(doc(db, "supplyChainOrders", orderId), {
             originAddress: address,
-            originLocation: { latitude: coords.latitude, longitude: coords.longitude },
+            originLocation: {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            },
           });
           alert("Auto location saved!");
-        } else alert("Could not detect address.");
+        } else {
+          alert("Could not detect address.");
+        }
       },
       (err) => {
         alert("Location error.");
@@ -189,6 +200,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
   return (
     <div style={styles.container}>
       <h2>🚜 Supply Chain Dashboard</h2>
+
       {loading ? (
         <p>Loading orders...</p>
       ) : (
@@ -263,11 +275,15 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                         <option value="Shipped">Shipped</option>
                         <option value="Delivered">Delivered</option>
                       </select>
-                      {currentUserRole === "farmer" && order.status === "Delivered" && (
-                        <button onClick={() => deleteOrder(order.id)} style={styles.deleteBtn}>
-                          Delete
-                        </button>
-                      )}
+                      {currentUserRole === "farmer" &&
+                        order.status === "Delivered" && (
+                          <button
+                            onClick={() => deleteOrder(order.id)}
+                            style={styles.deleteBtn}
+                          >
+                            Delete
+                          </button>
+                        )}
                       <button
                         onClick={() =>
                           setTrackingOrderId(
@@ -339,7 +355,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 };
 
 const styles = {
-  container: { padding: "20px", background: "#f9f9f9" },
+  container: { padding: "20px", background: "#f9f9f9", minHeight: "100vh" },
   table: {
     width: "100%",
     minWidth: "600px",
