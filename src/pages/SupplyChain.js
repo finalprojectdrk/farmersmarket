@@ -1,4 +1,4 @@
-// File: SupplyChain.js
+// SupplyChain.js
 
 import React, { useEffect, useState } from "react";
 import {
@@ -16,7 +16,7 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace securely
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with env var in prod!
 
 const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [orders, setOrders] = useState([]);
@@ -42,11 +42,11 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const sendSMSToBuyer = async (order, newStatus) => {
     const trackingUrl = `https://farmerssmarket.com/track?id=${order.id}`;
     try {
-      await fetch("/sendSMS", {
+      await fetch("/api/sms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: order.buyerPhone,
+          phoneNumber: order.buyerPhone,
           message: `Hi ${order.buyer}, your order (${order.crop}) status is now "${newStatus}". Track here: ${trackingUrl}. Farmer: ${order.farmerName}, Mobile: ${order.farmerPhone}`,
         }),
       });
@@ -57,7 +57,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 
   const notifyAllFarmers = async (orderId) => {
     try {
-      await fetch("/notifyFarmers", {
+      await fetch("/api/notifyFarmers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -128,8 +128,8 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
       await updateDoc(doc(db, "supplyChainOrders", orderId), {
         originAddress: address,
         originLocation: {
-          latitude: coords.lat,
-          longitude: coords.lng,
+          latitude: coords.lat(),
+          longitude: coords.lng(),
         },
       });
       alert("Manual location saved!");
@@ -337,7 +337,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                             lat: order.trackingLocation.latitude,
                             lng: order.trackingLocation.longitude,
                           }}
-                          label="Tracking"
+                          label="Transport"
                           icon="http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
                         />
                       )}
@@ -348,7 +348,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                             lng: order.location.longitude,
                           }}
                           label="Buyer"
-                          icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                          icon="http://maps.google.com/mapfiles/ms/icons/red-dot.png"
                         />
                       )}
                       {renderPolyline(order)}
@@ -364,68 +364,71 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 };
 
 const styles = {
-  container: { padding: "20px", background: "#f9f9f9", minHeight: "100vh" },
+  container: {
+    padding: 20,
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  },
   table: {
-    width: "100%",
-    minWidth: "600px",
     borderCollapse: "collapse",
-    background: "#fff",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-  },
-  saveBtn: {
-    padding: "4px 6px",
-    marginRight: 4,
-    backgroundColor: "#4CAF50",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-  },
-  detectBtn: {
-    padding: "4px 6px",
-    backgroundColor: "#2196F3",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    marginTop: "5px",
-  },
-  deleteBtn: {
-    marginLeft: "5px",
-    backgroundColor: "red",
-    color: "white",
-    padding: "5px 8px",
-    border: "none",
-    borderRadius: "4px",
-  },
-  trackBtn: {
-    marginLeft: "5px",
-    backgroundColor: "#6A1B9A",
-    color: "white",
-    padding: "5px 8px",
-    border: "none",
-    borderRadius: "4px",
-  },
-  status: {
-    Pending: { color: "orange", fontWeight: "bold" },
-    "In Transit": { color: "blue", fontWeight: "bold" },
-    Shipped: { color: "purple", fontWeight: "bold" },
-    Delivered: { color: "green", fontWeight: "bold" },
-  },
-  mapStyle: {
-    height: "500px",
     width: "100%",
-    marginTop: "20px",
-    borderRadius: "10px",
+    minWidth: 900,
   },
   cropImage: {
-    width: "60px",
-    height: "60px",
-    borderRadius: "8px",
-    objectFit: "cover",
+    maxWidth: 80,
+    maxHeight: 60,
+    borderRadius: 8,
+    marginRight: 8,
+    verticalAlign: "middle",
   },
   imageBox: {
     display: "flex",
-    flexDirection: "column",
     alignItems: "center",
+  },
+  status: {
+    Pending: { color: "#c0392b", fontWeight: "bold" },
+    "In Transit": { color: "#2980b9", fontWeight: "bold" },
+    Shipped: { color: "#f39c12", fontWeight: "bold" },
+    Delivered: { color: "#27ae60", fontWeight: "bold" },
+  },
+  saveBtn: {
+    padding: "4px 8px",
+    marginBottom: "5px",
+    backgroundColor: "#2ecc71",
+    border: "none",
+    color: "#fff",
+    borderRadius: 4,
+    cursor: "pointer",
+  },
+  detectBtn: {
+    padding: "4px 8px",
+    backgroundColor: "#3498db",
+    border: "none",
+    color: "#fff",
+    borderRadius: 4,
+    cursor: "pointer",
+  },
+  deleteBtn: {
+    marginLeft: 5,
+    padding: "4px 8px",
+    backgroundColor: "#e74c3c",
+    border: "none",
+    color: "#fff",
+    borderRadius: 4,
+    cursor: "pointer",
+  },
+  trackBtn: {
+    marginLeft: 5,
+    padding: "4px 8px",
+    backgroundColor: "#8e44ad",
+    border: "none",
+    color: "#fff",
+    borderRadius: 4,
+    cursor: "pointer",
+  },
+  mapStyle: {
+    width: "100%",
+    height: "400px",
+    marginTop: 20,
   },
 };
 
