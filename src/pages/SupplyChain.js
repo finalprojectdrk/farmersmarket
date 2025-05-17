@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -272,20 +273,17 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                         <option value="Shipped">Shipped</option>
                         <option value="Delivered">Delivered</option>
                       </select>
-                      {currentUserRole === "farmer" &&
-                        order.status === "Delivered" && (
-                          <button
-                            onClick={() => deleteOrder(order.id)}
-                            style={styles.deleteBtn}
-                          >
-                            Delete
-                          </button>
-                        )}
+                      {currentUserRole === "farmer" && order.status === "Delivered" && (
+                        <button
+                          onClick={() => deleteOrder(order.id)}
+                          style={styles.deleteBtn}
+                        >
+                          Delete
+                        </button>
+                      )}
                       <button
                         onClick={() =>
-                          setTrackingOrderId(
-                            trackingOrderId === order.id ? null : order.id
-                          )
+                          setTrackingOrderId(trackingOrderId === order.id ? null : order.id)
                         }
                         style={styles.trackBtn}
                       >
@@ -364,51 +362,58 @@ const styles = {
   },
   imageBox: {
     display: "flex",
-alignItems: "center",
-gap: 8,
-},
-cropImage: {
-width: 60,
-height: 60,
-objectFit: "cover",
-borderRadius: 4,
-},
-status: {
-Pending: { color: "#FFA500", fontWeight: "bold" },
-"In Transit": { color: "#1E90FF", fontWeight: "bold" },
-Shipped: { color: "#FF8C00", fontWeight: "bold" },
-Delivered: { color: "#008000", fontWeight: "bold" },
-},
-saveBtn: {
-padding: "5px 10px",
-marginBottom: 5,
-cursor: "pointer",
-},
-detectBtn: {
-padding: "5px 10px",
-cursor: "pointer",
-},
-deleteBtn: {
-marginLeft: 10,
-backgroundColor: "#ff4d4f",
-color: "white",
-border: "none",
-padding: "5px 10px",
-cursor: "pointer",
-},
-trackBtn: {
-marginLeft: 10,
-backgroundColor: "#1890ff",
-color: "white",
-border: "none",
-padding: "5px 10px",
-cursor: "pointer",
-},
-mapStyle: {
-height: "400px",
-width: "100%",
-marginTop: 20,
-},
+    alignItems: "center",
+    gap: 8,
+  },
+  cropImage: {
+    width: 60,
+    height: 60,
+    objectFit: "cover",
+    borderRadius: 4,
+  },
+  status: {
+    Pending: { color: "orange", fontWeight: "bold" },
+    "In Transit": { color: "blue", fontWeight: "bold" },
+    Shipped: { color: "purple", fontWeight: "bold" },
+    Delivered: { color: "green", fontWeight: "bold" },
+  },
+  saveBtn: {
+    backgroundColor: "#2ecc71",
+    color: "#fff",
+    border: "none",
+    padding: "5px 8px",
+    cursor: "pointer",
+    marginRight: 5,
+  },
+  detectBtn: {
+    backgroundColor: "#3498db",
+    color: "#fff",
+    border: "none",
+    padding: "5px 8px",
+    cursor: "pointer",
+  },
+  deleteBtn: {
+    backgroundColor: "red",
+    color: "#fff",
+    border: "none",
+    padding: "5px 8px",
+    marginLeft: 8,
+    cursor: "pointer",
+  },
+  trackBtn: {
+    backgroundColor: "#34495e",
+    color: "#fff",
+    border: "none",
+    padding: "5px 8px",
+    marginLeft: 8,
+    cursor: "pointer",
+  },
+  mapStyle: {
+    height: "400px",
+    width: "100%",
+    marginTop: 20,
+    borderRadius: 8,
+  },
 };
 
 export default SupplyChain;
