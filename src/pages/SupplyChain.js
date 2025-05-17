@@ -5,6 +5,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import {
@@ -14,9 +15,9 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your actual API key
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Your key
 
-const SupplyChain = ({ currentUserRole = "farmer" }) => {
+const SupplyChain = ({ currentUserRole = "farmer", currentUserName = "Farmer" }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [manualAddress, setManualAddress] = useState({});
@@ -37,6 +38,23 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
     return () => unsubscribe();
   }, []);
 
+  // Fetch all farmers phones to notify on status update
+  const fetchAllFarmersPhones = async () => {
+    const farmerPhones = [];
+    try {
+      const querySnapshot = await getDocs(collection(db, "farmers"));
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.phone) {
+          farmerPhones.push(data.phone);
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching farmers phones:", error);
+    }
+    return farmerPhones;
+  };
+
   const handleStatusChange = async (orderId, newStatus) => {
     await updateDoc(doc(db, "supplyChainOrders", orderId), {
       status: newStatus,
@@ -47,7 +65,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 
     const trackingUrl = `https://your-app-domain.com/track?id=${orderId}`;
 
-    // ✅ Send Email
+    // Send email to buyer
     try {
       await fetch("/sendEmail", {
         method: "POST",
@@ -62,7 +80,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
       console.error("Email error:", err);
     }
 
-    // ✅ Send SMS
+    // Send SMS to buyer
     try {
       await fetch("/sendSMS", {
         method: "POST",
@@ -73,7 +91,24 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         }),
       });
     } catch (err) {
-      console.error("SMS error:", err);
+      console.error("SMS to buyer error:", err);
+    }
+
+    // Send SMS to ALL farmers about this status change by current farmer
+    try {
+      const farmerPhones = await fetchAllFarmersPhones();
+      const message = `Order (${order.crop}) is "${newStatus}" by farmer ${currentUserName}.`;
+      await Promise.all(
+        farmerPhones.map((phone) =>
+          fetch("/sendSMS", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, message }),
+          })
+        )
+      );
+    } catch (err) {
+      console.error("SMS to farmers error:", err);
     }
   };
 
@@ -124,8 +159,8 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
       await updateDoc(doc(db, "supplyChainOrders", orderId), {
         originAddress: address,
         originLocation: {
-          latitude: latLng.lat,
-          longitude: latLng.lng,
+          latitude: latLng.lat(),
+          longitude: latLng.lng(),
         },
       });
       alert("Manual location saved!");
@@ -265,17 +300,22 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                       </p>
                     </td>
                     <td>
-                      <select
-                        value={order.status}
-                        onChange={(e) =>
-                          handleStatusChange(order.id, e.target.value)
-                        }
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="In Transit">In Transit</option>
-                        <option value="Shipped">Shipped</option>
-                        <option value="Delivered">Delivered</option>
-                      </select>
+                      {/* Only farmer can change status */}
+                      {currentUserRole === "farmer" ? (
+                        <select
+                          value={order.status}
+                          onChange={(e) =>
+                            handleStatusChange(order.id, e.target.value)
+                          }
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="In Transit">In Transit</option>
+                          <option value="Shipped">Shipped</option>
+                          <option value="Delivered">Delivered</option>
+                        </select>
+                      ) : (
+                        <span>{order.status}</span>
+                      )}
 
                       {currentUserRole === "farmer" &&
                         order.status === "Delivered" && (
@@ -411,16 +451,16 @@ const styles = {
     borderRadius: "10px",
   },
   cropImage: {
-    width: "60px",
-    height: "60px",
-    borderRadius: "8px",
-    objectFit: "cover",
-  },
-  imageBox: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  },
+width: "60px",
+height: "60px",
+objectFit: "cover",
+borderRadius: "6px",
+marginRight: "10px",
+},
+imageBox: {
+display: "flex",
+alignItems: "center",
+},
 };
 
 export default SupplyChain;
