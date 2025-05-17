@@ -1,5 +1,3 @@
-// File: SupplyChain.js
-
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -16,7 +14,7 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace securely
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
 const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [orders, setOrders] = useState([]);
@@ -50,7 +48,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
     const trackingUrl = `https://farmerssmarket.com/track?id=${orderId}`;
 
     try {
-      await fetch("/sendEmail", {
+      await fetch("/api/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -64,11 +62,11 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
     }
 
     try {
-      await fetch("/sendSMS", {
+      await fetch("/api/sms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: order.buyerPhone,
+          phoneNumber: order.buyerPhone,
           message: `Order (${order.crop}) is "${newStatus}". Track: ${trackingUrl}`,
         }),
       });
@@ -121,8 +119,8 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
       await updateDoc(doc(db, "supplyChainOrders", orderId), {
         originAddress: address,
         originLocation: {
-          latitude: coords.lat,
-          longitude: coords.lng,
+          latitude: coords.lat(),
+          longitude: coords.lng(),
         },
       });
       alert("Manual location saved!");
@@ -319,17 +317,6 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                             lng: order.originLocation.longitude,
                           }}
                           label="Farmer"
-                          icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
-                        />
-                      )}
-                      {order.trackingLocation && (
-                        <Marker
-                          position={{
-                            lat: order.trackingLocation.latitude,
-                            lng: order.trackingLocation.longitude,
-                          }}
-                          label="Tracking"
-                          icon="http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
                         />
                       )}
                       {order.location && (
@@ -339,7 +326,18 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                             lng: order.location.longitude,
                           }}
                           label="Buyer"
-                          icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                        />
+                      )}
+                      {order.trackingLocation && (
+                        <Marker
+                          position={{
+                            lat: order.trackingLocation.latitude,
+                            lng: order.trackingLocation.longitude,
+                          }}
+                          label="Transport"
+                          icon={{
+                            url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+                          }}
                         />
                       )}
                       {renderPolyline(order)}
@@ -355,69 +353,73 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 };
 
 const styles = {
-  container: { padding: "20px", background: "#f9f9f9", minHeight: "100vh" },
+  container: {
+    padding: 20,
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  },
   table: {
     width: "100%",
-    minWidth: "600px",
     borderCollapse: "collapse",
-    background: "#fff",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-  },
-  saveBtn: {
-    padding: "4px 6px",
-    marginRight: 4,
-    backgroundColor: "#4CAF50",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-  },
-  detectBtn: {
-    padding: "4px 6px",
-    backgroundColor: "#2196F3",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    marginTop: "5px",
-  },
-  deleteBtn: {
-    marginLeft: "5px",
-    backgroundColor: "red",
-    color: "white",
-    padding: "5px 8px",
-    border: "none",
-    borderRadius: "4px",
-  },
-  trackBtn: {
-    marginLeft: "5px",
-    backgroundColor: "#6A1B9A",
-    color: "white",
-    padding: "5px 8px",
-    border: "none",
-    borderRadius: "4px",
-  },
-  status: {
-    Pending: { color: "orange", fontWeight: "bold" },
-    "In Transit": { color: "blue", fontWeight: "bold" },
-    Shipped: { color: "purple", fontWeight: "bold" },
-    Delivered: { color: "green", fontWeight: "bold" },
-  },
-  mapStyle: {
-    height: "500px",
-    width: "100%",
-    marginTop: "20px",
-    borderRadius: "10px",
-  },
-  cropImage: {
-    width: "60px",
-    height: "60px",
-    borderRadius: "8px",
-    objectFit: "cover",
+    marginBottom: 20,
   },
   imageBox: {
     display: "flex",
-    flexDirection: "column",
     alignItems: "center",
+    gap: 8,
   },
+  cropImage: {
+    width: 60,
+    height: 60,
+    objectFit: "cover",
+    borderRadius: 4,
+  },
+  status: {
+    Pending: { color: "#F39C12", fontWeight: "bold" },
+    "In Transit": { color: "#2980B9", fontWeight: "bold" },
+    Shipped: { color: "#8E44AD", fontWeight: "bold" },
+    Delivered: { color: "#27AE60", fontWeight: "bold" },
+  },
+  saveBtn: {
+    padding: "5px 10px",
+    backgroundColor: "#2980B9",
+    color: "#fff",
+    border: "none",
+    borderRadius: 4,
+    cursor: "pointer",
+  },
+  detectBtn: {
+    padding: "5px 10px",
+    backgroundColor: "#27AE60",
+    color: "#fff",
+    border: "none",
+    borderRadius: 4,
+    cursor: "pointer",
+  },
+  deleteBtn: {
+    marginLeft: 8,
+    padding: "5px 10px",
+    backgroundColor: "#E74C3C",
+    color: "#fff",
+    border: "none",
+    borderRadius: 4,
+    cursor: "pointer",
+  },
+  trackBtn: {
+   
+marginLeft: 8,
+padding: "5px 10px",
+backgroundColor: "#34495E",
+color: "#fff",
+border: "none",
+borderRadius: 4,
+cursor: "pointer",
+},
+mapStyle: {
+width: "100%",
+height: "400px",
+marginTop: 20,
+borderRadius: 8,
+},
 };
 
 export default SupplyChain;
