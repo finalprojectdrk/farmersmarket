@@ -248,30 +248,25 @@ const SupplyChain = () => {
                 <button onClick={() => handleStatusUpdate(order, "In Transit")} style={{ padding: "8px 16px", backgroundColor: "#ffc107", color: "#fff", border: "none", borderRadius: "4px" }}>
                   🚚 In Transit
                 </button>
-                <button onClick={() => handleStatusUpdate(order, "Delivered")} style={{ padding: "8px 16px", backgroundColor: "#28a745", color: "#fff", border: "none", borderRadius: "4px" }}>
+                <button onClick={() => handleStatusUpdate(order, "Delivered")} style={{ padding: "8px 16px", backgroundColor: "#17a2b8", color: "#fff", border: "none", borderRadius: "4px" }}>
                   ✅ Delivered
                 </button>
-                {order.status === "Delivered" && (
-                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white", padding: "8px 16px", borderRadius: "4px", border: "none" }}>
-                    🗑️ Delete
-                  </button>
-                )}
+                <button onClick={() => handleDelete(order.id)} style={{ padding: "8px 16px", backgroundColor: "#dc3545", color: "#fff", border: "none", borderRadius: "4px" }}>
+                  🗑️ Delete
+                </button>
               </div>
+              {directions && (
+                <GoogleMap
+                  mapContainerStyle={{ width: "100%", height: "400px", marginTop: "20px" }}
+                  center={{ lat: order.location.latitude, lng: order.location.longitude }}
+                  zoom={10}
+                >
+                  <DirectionsRenderer directions={directions} />
+                </GoogleMap>
+              )}
             </div>
           ))}
         </div>
-
-        {directions && (
-          <div style={{ marginTop: "20px" }}>
-            <GoogleMap
-              mapContainerStyle={{ width: "100%", height: "400px" }}
-              center={directions.routes[0].overview_path[0]}
-              zoom={10}
-            >
-              <DirectionsRenderer directions={directions} />
-            </GoogleMap>
-          </div>
-        )}
       </div>
     </LoadScript>
   );
