@@ -1,110 +1,123 @@
-import React, { useEffect, useState } from "react";
-import {
-  collection,
-  onSnapshot,
-  updateDoc,
-  doc,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuth } from "../auth";
-import { sendSMS } from "../utils/sms";
-import GoogleMapReact from "google-map-react";
-import { Button } from "@/components/ui/button";
-import "./SupplyChain.css";
+import React, { useState, useEffect } from 'react';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { GoogleMap, DirectionsRenderer, useLoadScript } from '@react-google-maps/api';
+import sendSMS from '../utils/sendSMS';
+import sendEmail from '../utils/sendEmail';
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
-const Marker = ({ text }) => <div className="marker">📍 {text}</div>;
+const libraries = ['places'];
 
-const SupplyChain = () => {
-  const user = useAuth();
+const mapContainerStyle = {
+  width: '100%',
+  height: '300px',
+  borderRadius: '12px',
+  marginTop: '1rem'
+};
+
+const containerStyle = {
+  padding: '1rem',
+  fontFamily: 'Arial, sans-serif'
+};
+
+const cardStyle = {
+  background: '#fff',
+  padding: '1rem',
+  borderRadius: '12px',
+  margin: '1rem 0',
+  boxShadow: '0 0 10px rgba(0,0,0,0.1)'
+};
+
+const imageStyle = {
+  width: '100%',
+  maxHeight: '200px',
+  objectFit: 'cover',
+  borderRadius: '8px'
+};
+
+export default function SupplyChain() {
   const [orders, setOrders] = useState([]);
-  const [mapData, setMapData] = useState({});
+  const [directions, setDirections] = useState({});
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
+    libraries
+  });
 
   useEffect(() => {
-    if (!user?.uid) return;
+    const fetchOrders = async () => {
+      const querySnapshot = await getDocs(collection(db, 'orders'));
+      const ordersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setOrders(ordersData);
+    };
 
-    const q = query(collection(db, "supplyChainOrders"), where("status", "!=", "Delivered"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-      setOrders(data);
-    });
+    fetchOrders();
+  }, []);
 
-    return () => unsubscribe();
-  }, [user]);
+  const handleTrack = async (orderId, origin, destination) => {
+    if (!isLoaded || !origin || !destination) return;
 
-  const updateStatus = async (order, newStatus) => {
-    try {
-      const orderRef = doc(db, "supplyChainOrders", order.id);
-      await updateDoc(orderRef, { status: newStatus });
-
-      const cleanedPhone = order.contact?.startsWith("+91") ? order.contact : `+91${order.contact}`;
-
-      if (cleanedPhone) {
-        await sendSMS(
-          cleanedPhone,
-          `📦 Your order (${order.orderId}) status has been updated to '${newStatus}'.`
-        );
+    const directionsService = new window.google.maps.DirectionsService();
+    directionsService.route(
+      {
+        origin,
+        destination,
+        travelMode: window.google.maps.TravelMode.DRIVING
+      },
+      (result, status) => {
+        if (status === window.google.maps.DirectionsStatus.OK) {
+          setDirections(prev => ({ ...prev, [orderId]: result }));
+        } else {
+          alert('Directions request failed due to ' + status);
+        }
       }
-
-      alert("✅ Status updated & SMS sent!");
-    } catch (err) {
-      console.error(err);
-      alert("❌ Failed to update status or send SMS.");
-    }
+    );
   };
 
-  const handleTrack = (order) => {
-    setMapData({
-      center: {
-        lat: order.location.latitude,
-        lng: order.location.longitude,
-      },
-      zoom: 10,
-      orderId: order.orderId,
-    });
+  const handleStatusChange = async (orderId, status, buyerPhone, buyerEmail) => {
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, { status });
+
+    const message = `Order ${orderId} status updated to "${status}".`;
+    if (buyerPhone) await sendSMS(buyerPhone, message);
+    if (buyerEmail) await sendEmail(buyerEmail, 'Order Update', message);
+    alert('Status updated and notification sent!');
   };
 
   return (
-    <div className="supplychain-container">
-      <h2>🚚 Supply Chain Management</h2>
-      <div className="order-list">
-        {orders.map((order) => (
-          <div key={order.id} className="order-card">
-            <img src={order.image} alt={order.crop} className="order-image" />
-            <h4>{order.crop}</h4>
-            <p>Buyer: {order.buyer}</p>
-            <p>Contact: {order.contact}</p>
-            <p>Status: {order.status}</p>
-            <Button onClick={() => updateStatus(order, "In Transit")}>In Transit</Button>
-            <Button onClick={() => updateStatus(order, "Delivered")}>Delivered</Button>
-            <Button onClick={() => handleTrack(order)}>📍 Track</Button>
-          </div>
-        ))}
-      </div>
-
-      {mapData.center && (
-        <div className="map-container">
-          <h3>Tracking Order: {mapData.orderId}</h3>
-          <div style={{ height: "400px", width: "100%" }}>
-            <GoogleMapReact
-              bootstrapURLKeys={{ key: GOOGLE_MAPS_API_KEY }}
-              defaultCenter={mapData.center}
-              defaultZoom={mapData.zoom}
+    <div style={containerStyle}>
+      <h2>Supply Chain Tracking</h2>
+      {orders.map(order => (
+        <div key={order.id} style={cardStyle}>
+          <h3>Order ID: {order.id}</h3>
+          <p><strong>Product:</strong> {order.productName}</p>
+          <p><strong>Buyer:</strong> {order.buyerName}</p>
+          <p><strong>Status:</strong> {order.status}</p>
+          {order.imageUrl && <img src={order.imageUrl} alt="product" style={imageStyle} />}
+          <div style={{ marginTop: '0.5rem' }}>
+            <button onClick={() => handleTrack(order.id, order.farmerLocation, order.buyerLocation)}>
+              Track
+            </button>
+            <select
+              value={order.status}
+              onChange={e => handleStatusChange(order.id, e.target.value, order.buyerPhone, order.buyerEmail)}
+              style={{ marginLeft: '10px' }}
             >
-              <Marker
-                lat={mapData.center.lat}
-                lng={mapData.center.lng}
-                text="Buyer"
-              />
-            </GoogleMapReact>
+              <option value="Ordered">Ordered</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Delivered">Delivered</option>
+            </select>
           </div>
+
+          {directions[order.id] && (
+            <GoogleMap
+              mapContainerStyle={mapContainerStyle}
+              zoom={7}
+              center={directions[order.id].routes[0].bounds.getCenter()}
+            >
+              <DirectionsRenderer directions={directions[order.id]} />
+            </GoogleMap>
+          )}
         </div>
-      )}
+      ))}
     </div>
   );
-};
-
-export default SupplyChain;
+}
