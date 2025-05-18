@@ -1,4 +1,4 @@
-// ...all existing imports
+// SupplyChain.js
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -20,7 +20,7 @@ import { sendEmail } from "../utils/email";
 import { useAuth } from "../auth";
 import "./SupplyChain.css";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
+const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // replace with your actual API key
 
 const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
@@ -84,14 +84,9 @@ const SupplyChain = () => {
           )}&key=${GOOGLE_MAPS_API_KEY}`
         );
         const geoData = await geoResponse.json();
-        if (
-          geoData.status === "OK" &&
-          geoData.results &&
-          geoData.results.length > 0
-        ) {
+        if (geoData.status === "OK" && geoData.results.length > 0) {
           const loc = geoData.results[0].geometry.location;
           origin = { lat: loc.lat, lng: loc.lng };
-          console.log("✅ Geocoded farmer address:", origin);
         } else {
           alert("❌ Could not geocode farmer address.");
           return;
@@ -115,11 +110,9 @@ const SupplyChain = () => {
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
               };
-              console.log("📍 Browser-detected location:", coords);
               resolve(coords);
             },
             (err) => {
-              console.error("❌ Geolocation error:", err);
               alert("❌ Failed to get your current location.");
               reject();
             }
@@ -131,8 +124,6 @@ const SupplyChain = () => {
     }
 
     const distance = getDistance(origin, destination);
-    console.log("📏 Distance (km):", distance.toFixed(2));
-
     if (distance > 2000) {
       alert("❌ Cannot generate route: Buyer is too far for road travel.");
       return;
@@ -146,9 +137,7 @@ const SupplyChain = () => {
         travelMode: window.google.maps.TravelMode.DRIVING,
       });
       setDirections(result);
-      console.log("✅ Directions route set.");
     } catch (error) {
-      console.error("❌ Directions request failed:", error);
       alert("❌ Route generation failed. Please try again.");
     }
   };
@@ -178,22 +167,25 @@ const SupplyChain = () => {
   const handleStatusUpdate = async (order, newStatus) => {
     const orderRef = doc(db, "supplyChainOrders", order.id);
     await updateDoc(orderRef, { status: newStatus });
+
     try {
       const phone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
       const farmerName = farmerInfo?.name || "Unknown Farmer";
       const farmerPhone = farmerInfo?.phone || "N/A";
+
       await sendSMS(
         phone,
         `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
       );
-      const buyerEmail = order.email;
-      if (buyerEmail) {
+
+      if (order.email) {
         await sendEmail(
-          buyerEmail,
+          order.email,
           "Order Status Updated",
-          `Hi ${order.buyer},\n\nYour order (${order.orderId}) status is now: ${newStatus}.\n\n👨‍🌾 Farmer: ${farmerName}\n📞 Contact: ${farmerPhone}\n\nThanks,\nFarmers Market`
+          `Hi ${order.buyer},\n\nYour order (${order.orderId}) is now: ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}\n📞 ${farmerPhone}\n\nThanks,\nFarmers Market`
         );
       }
+
       alert("✅ Status updated & buyer notified.");
     } catch (error) {
       console.error("Notification error:", error);
@@ -224,6 +216,7 @@ const SupplyChain = () => {
               <div><strong>Contact:</strong> {order.contact}</div>
               <div><strong>Status:</strong> {order.status}</div>
               <div><strong>Farmer Address:</strong> {order.farmerAddress || "Not set"}</div>
+
               <input
                 type="text"
                 placeholder="Enter your location"
@@ -231,20 +224,24 @@ const SupplyChain = () => {
                 onChange={(e) => handleManualLocationChange(order.id, e.target.value)}
               />
               <button onClick={() => detectFarmerLocation(order.id)}>📍 Detect Location</button>
+
               <div className="order-buttons">
                 <button onClick={() => handleTrack(order)}>🗺️ Track</button>
                 <button onClick={() => handleStatusUpdate(order, "Shipped")}>📦 Shipped</button>
                 <button onClick={() => handleStatusUpdate(order, "In Transit")}>🚚 In Transit</button>
                 <button onClick={() => handleStatusUpdate(order, "Delivered")}>✅ Delivered</button>
                 {order.status === "Delivered" && (
-                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white" }}>🗑️ Delete</button>
+                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white" }}>
+                    🗑️ Delete
+                  </button>
                 )}
               </div>
             </div>
           ))}
         </div>
-        <div className="map-container">
-          {directions && (
+
+        {directions && (
+          <div className="map-container">
             <GoogleMap
               mapContainerStyle={{ width: "100%", height: "400px" }}
               center={directions.routes[0].overview_path[0]}
@@ -252,8 +249,8 @@ const SupplyChain = () => {
             >
               <DirectionsRenderer directions={directions} />
             </GoogleMap>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </LoadScript>
   );
