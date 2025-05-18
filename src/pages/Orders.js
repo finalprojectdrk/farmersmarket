@@ -7,9 +7,12 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../auth";
-import { GoogleMap, DirectionsRenderer, LoadScript } from "@react-google-maps/api";
+import {
+  GoogleMap,
+  DirectionsRenderer,
+  LoadScript
+} from "@react-google-maps/api";
 
-// Replace with your actual API key for Google Maps
 const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
 const Orders = () => {
@@ -17,11 +20,15 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [directions, setDirections] = useState({});
   const [showMap, setShowMap] = useState({});
+  const [loadingMap, setLoadingMap] = useState({});
 
   useEffect(() => {
     if (!user?.uid) return;
 
-    const q = query(collection(db, "supplyChainOrders"), where("buyerId", "==", user.uid));
+    const q = query(
+      collection(db, "supplyChainOrders"),
+      where("buyerId", "==", user.uid)
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const userOrders = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
@@ -33,48 +40,60 @@ const Orders = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const trackRoute = (order) => {
-    if (
-      !order?.location?.latitude ||
-      !order?.location?.longitude ||
-      !order?.farmerLocation?.latitude ||
-      !order?.farmerLocation?.longitude
-    ) {
-      alert("❌ Missing buyer or farmer location data. Please ensure both locations are set.");
-      return;
-    }
-
-    const origin = {
-      lat: order.farmerLocation.latitude,
-      lng: order.farmerLocation.longitude,
-    };
-
-    const dest = {
-      lat: order.location.latitude,
-      lng: order.location.longitude,
-    };
-
-    // Initialize the DirectionsService
-    const directionsService = new window.google.maps.DirectionsService();
-
-    // Request directions from the Directions API
-    directionsService.route(
-      {
-        origin,
-        destination: dest,
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (status === "OK") {
-          // Store the directions result
-          setDirections((prev) => ({ ...prev, [order.id]: result }));
-          setShowMap((prev) => ({ ...prev, [order.id]: true }));
-        } else {
-          console.error("Directions request failed:", status);
-          alert("❌ Failed to get directions");
-        }
-      }
+  const geocodeAddress = async (address) => {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+        address
+      )}&key=${GOOGLE_MAPS_API_KEY}`
     );
+    const data = await response.json();
+    if (data.status === "OK") {
+      const location = data.results[0].geometry.location;
+      return { lat: location.lat, lng: location.lng };
+    } else {
+      throw new Error("Geocoding failed: " + data.status);
+    }
+  };
+
+  const trackRoute = async (order) => {
+    try {
+      setLoadingMap((prev) => ({ ...prev, [order.id]: true }));
+
+      if (!order?.location?.latitude || !order?.location?.longitude) {
+        alert("❌ Missing buyer location.");
+        return;
+      }
+
+      const dest = {
+        lat: order.location.latitude,
+        lng: order.location.longitude,
+      };
+
+      const origin = await geocodeAddress(order.farmerAddress);
+
+      const directionsService = new window.google.maps.DirectionsService();
+      directionsService.route(
+        {
+          origin,
+          destination: dest,
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === "OK") {
+            setDirections((prev) => ({ ...prev, [order.id]: result }));
+            setShowMap((prev) => ({ ...prev, [order.id]: true }));
+          } else {
+            alert("❌ Failed to get directions");
+            console.error("Directions request failed:", status);
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Error in geocoding or routing:", error);
+      alert("❌ Unable to get route. Check console for details.");
+    } finally {
+      setLoadingMap((prev) => ({ ...prev, [order.id]: false }));
+    }
   };
 
   return (
@@ -87,20 +106,41 @@ const Orders = () => {
           <div style={styles.ordersList}>
             {orders.map((order) => (
               <div key={order.id} style={styles.orderCard}>
-                <img src={order.image} alt={order.crop} style={styles.orderImage} />
+                <img
+                  src={order.image}
+                  alt={order.crop}
+                  style={styles.orderImage}
+                />
                 <div style={styles.orderInfo}>
                   <h3 style={styles.orderTitle}>{order.crop}</h3>
-                  <p style={styles.orderDetail}><strong>Order ID:</strong> {order.orderId}</p>
-                  <p style={styles.orderDetail}><strong>Status:</strong> {order.status}</p>
-                  <p style={styles.orderDetail}><strong>Quantity:</strong> {order.quantity}</p>
-                  <p style={styles.orderDetail}><strong>Price:</strong> ₹{order.price}</p>
-                  <p style={styles.orderDetail}><strong>Farmer Location:</strong> {order.farmerAddress || "Not available"}</p>
-                  <button onClick={() => trackRoute(order)} style={styles.trackButton}>📍 Live Track</button>
+                  <p style={styles.orderDetail}>
+                    <strong>Order ID:</strong> {order.orderId}
+                  </p>
+                  <p style={styles.orderDetail}>
+                    <strong>Status:</strong> {order.status}
+                  </p>
+                  <p style={styles.orderDetail}>
+                    <strong>Quantity:</strong> {order.quantity}
+                  </p>
+                  <p style={styles.orderDetail}>
+                    <strong>Price:</strong> ₹{order.price}
+                  </p>
+                  <p style={styles.orderDetail}>
+                    <strong>Farmer Location:</strong>{" "}
+                    {order.farmerAddress || "Not available"}
+                  </p>
+                  <button
+                    onClick={() => trackRoute(order)}
+                    style={styles.trackButton}
+                    disabled={loadingMap[order.id]}
+                  >
+                    {loadingMap[order.id] ? "Loading..." : "📍 Live Track"}
+                  </button>
                 </div>
                 {showMap[order.id] && directions[order.id] && (
                   <GoogleMap
                     mapContainerStyle={styles.mapContainer}
-                    center={order.farmerLocation}
+                    center={order.location}
                     zoom={8}
                   >
                     <DirectionsRenderer directions={directions[order.id]} />
