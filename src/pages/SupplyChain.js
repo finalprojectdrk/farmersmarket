@@ -1,4 +1,3 @@
-// SupplyChain.js
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -20,8 +19,9 @@ import { sendEmail } from "../utils/email";
 import { useAuth } from "../auth";
 import "./SupplyChain.css";
 
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // replace with your actual API key
-const LIBRARIES = ["places"]; // Static declaration to fix LoadScript reload warning
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // replace this
+
+const libraries = ["places"];
 
 const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
@@ -170,16 +170,45 @@ const SupplyChain = () => {
     await updateDoc(orderRef, { status: newStatus });
 
     try {
-      const phone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
       const farmerName = farmerInfo?.name || "Unknown Farmer";
       const farmerPhone = farmerInfo?.phone || "N/A";
+      const buyerPhone = order.contact.startsWith("+91")
+        ? order.contact
+        : `+91${order.contact}`;
 
-      // Notify Buyer
-      await sendSMS(
-        phone,
-        `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
-      );
+      // 1. Notify Buyer
+      if (newStatus === "Shipped") {
+        await sendSMS(
+          buyerPhone,
+          `📦 Hi ${order.buyer}, your order (${order.orderId}) has been shipped by ${farmerName}. 📞 ${farmerPhone}`
+        );
+      } else {
+        await sendSMS(
+          buyerPhone,
+          `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}. 👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
+        );
+      }
 
+      // 2. Notify all farmers (only when shipped)
+      if (newStatus === "Shipped") {
+        const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
+        const snapshot = await getDocs(farmersQuery);
+
+        for (const docSnap of snapshot.docs) {
+          const farmer = docSnap.data();
+          const farmerContact = farmer.phone?.startsWith("+91")
+            ? farmer.phone
+            : `+91${farmer.phone}`;
+          if (farmerContact) {
+            await sendSMS(
+              farmerContact,
+              `📢 Order (${order.orderId}) has been shipped by ${farmerName} to ${order.buyer}.`
+            );
+          }
+        }
+      }
+
+      // 3. Email to Buyer
       if (order.email) {
         await sendEmail(
           order.email,
@@ -188,23 +217,10 @@ const SupplyChain = () => {
         );
       }
 
-      // Notify Farmer (only when "Shipped")
-      if (newStatus === "Shipped" && farmerInfo?.phone) {
-        await sendSMS(
-          `+91${farmerInfo.phone}`,
-          `✅ You have marked order (${order.orderId}) as SHIPPED to ${order.buyer}`
-        );
-        await sendEmail(
-          user?.email,
-          "Order Shipped Confirmation",
-          `You have shipped order ${order.orderId} to ${order.buyer}.\nAddress: ${order.address}\nContact: ${order.contact}`
-        );
-      }
-
       alert("✅ Status updated & notifications sent.");
     } catch (error) {
       console.error("Notification error:", error);
-      alert("⚠️ Status updated, but failed to send notifications.");
+      alert("❌ Failed to send notifications.");
     }
   };
 
@@ -217,7 +233,7 @@ const SupplyChain = () => {
   };
 
   return (
-    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES}>
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
       <div className="supplychain-container">
         <h2>🚚 Supply Chain Tracking</h2>
         <div className="orders-list">
