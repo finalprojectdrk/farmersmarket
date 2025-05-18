@@ -195,7 +195,23 @@ const SupplyChain = () => {
         );
       }
 
-      alert("✅ Status updated & notifications sent.");
+      // Fetch and notify all farmers
+      const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
+      const farmerSnapshot = await getDocs(farmersQuery);
+
+      const farmerNotifications = farmerSnapshot.docs.map(async (docSnap) => {
+        const farmer = docSnap.data();
+        const farmerPhone = farmer.phone ? `+91${farmer.phone}` : null;
+        if (farmerPhone) {
+          const farmerMessage = `📦 Order ${order.orderId} status updated to ${newStatus}. Buyer: ${order.buyer}, Address: ${order.address}.`;
+          await sendSMS(farmerPhone, farmerMessage);
+        } else {
+          console.error(`Invalid phone number for farmer ${farmer.name}`);
+        }
+      });
+
+      await Promise.all(farmerNotifications);  // Notify all farmers
+      alert("✅ Status updated & notifications sent to all farmers.");
     } catch (error) {
       console.error("Notification error:", error);
       alert("⚠️ Status updated, but failed to send notifications.");
