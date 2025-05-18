@@ -1,5 +1,4 @@
 
-// SupplyChain.js (Frontend)
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -16,7 +15,7 @@ import {
   Polyline,
 } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace securely
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
 const SupplyChain = ({ currentUserRole = "farmer" }) => {
   const [orders, setOrders] = useState([]);
@@ -34,6 +33,10 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         }));
         setOrders(orderData);
         setLoading(false);
+      },
+      (error) => {
+        console.error("Firestore error:", error);
+        setLoading(false);
       }
     );
     return () => unsubscribe();
@@ -46,8 +49,8 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phoneNumber: order.buyerPhone, // Correct key expected by backend
-          message: \`Hi \${order.buyer}, your order (\${order.crop}) status is now "\${newStatus}". Track here: \${trackingUrl}. Farmer: \${order.farmerName}, Mobile: \${order.farmerPhone}\`,
+          phoneNumber: order.buyerPhone,
+          message: `Hi ${order.buyer}, your order (${order.crop}) status is now "${newStatus}". Track here: ${trackingUrl}. Farmer: ${order.farmerName}, Mobile: ${order.farmerPhone}`,
         }),
       });
     } catch (err) {
@@ -61,7 +64,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: \`Order ID \${orderId} status has changed. Please check your dashboard.\`,
+          message: `Order ID ${orderId} status has changed. Please check your dashboard.`,
         }),
       });
     } catch (err) {
@@ -201,6 +204,13 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
     ) : null;
   };
 
+  const getCenterFromPoints = (points) => {
+    if (!points.length) return { lat: 12.9716, lng: 77.5946 };
+    const latSum = points.reduce((sum, p) => sum + p.lat, 0);
+    const lngSum = points.reduce((sum, p) => sum + p.lng, 0);
+    return { lat: latSum / points.length, lng: lngSum / points.length };
+  };
+
   return (
     <div style={styles.container}>
       <h2>🚜 Supply Chain Dashboard</h2>
@@ -254,10 +264,12 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                           }))
                         }
                         style={{ width: "100%", marginBottom: 5 }}
+                        aria-label="Manual address input"
                       />
                       <button
                         onClick={() => saveManualLocation(order.id)}
                         style={styles.saveBtn}
+                        aria-label="Save manual location"
                       >
                         Save Manual Location
                       </button>
@@ -265,6 +277,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                       <button
                         onClick={() => autoDetectAndSave(order.id)}
                         style={styles.detectBtn}
+                        aria-label="Auto detect and save location"
                       >
                         Auto Detect & Save
                       </button>
@@ -278,6 +291,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                         onChange={(e) =>
                           handleStatusChange(order.id, e.target.value)
                         }
+                        aria-label="Order status select"
                       >
                         <option value="Pending">Pending</option>
                         <option value="In Transit">In Transit</option>
@@ -288,6 +302,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                         <button
                           onClick={() => deleteOrder(order.id)}
                           style={styles.deleteBtn}
+                          aria-label="Delete delivered order"
                         >
                           Delete
                         </button>
@@ -297,6 +312,7 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                           setTrackingOrderId(trackingOrderId === order.id ? null : order.id)
                         }
                         style={styles.trackBtn}
+                        aria-label="Toggle tracking map"
                       >
                         {trackingOrderId === order.id ? "Hide Map" : "Track"}
                       </button>
@@ -309,15 +325,39 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 
           {trackingOrderId && (
             <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-              <GoogleMap
-                mapContainerStyle={styles.mapStyle}
-                center={{ lat: 12.9716, lng: 77.5946 }}
-                zoom={6}
-              >
-                {orders
-                  .filter((order) => order.id === trackingOrderId)
-                  .map((order) => (
-                    <React.Fragment key={order.id}>
+              {orders
+                .filter((order) => order.id === trackingOrderId)
+                .map((order) => {
+                  const points = [];
+
+                  if (order.originLocation) {
+                    points.push({
+                      lat: order.originLocation.latitude,
+                      lng: order.originLocation.longitude,
+                    });
+                  }
+                  if (order.trackingLocation) {
+                    points.push({
+                      lat: order.trackingLocation.latitude,
+                      lng: order.trackingLocation.longitude,
+                    });
+                  }
+                  if (order.location) {
+                    points.push({
+                      lat: order.location.latitude,
+                      lng: order.location.longitude,
+                    });
+                  }
+
+                  const center = getCenterFromPoints(points);
+
+                  return (
+                    <GoogleMap
+                      key={order.id}
+                      mapContainerStyle={styles.mapStyle}
+                      center={center}
+                      zoom={8}
+                    >
                       {order.originLocation && (
                         <Marker
                           position={{
@@ -349,9 +389,9 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
                         />
                       )}
                       {renderPolyline(order)}
-                    </React.Fragment>
-                  ))}
-              </GoogleMap>
+                    </GoogleMap>
+                  );
+                })}
             </LoadScript>
           )}
         </>
@@ -363,7 +403,6 @@ const SupplyChain = ({ currentUserRole = "farmer" }) => {
 const styles = {
   container: {
     padding: 20,
-    fontFamily: "Arial, sans-serif",
   },
   table: {
     width: "100%",
@@ -372,12 +411,13 @@ const styles = {
   imageBox: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   cropImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 4,
+    width: 60,
+    height: 60,
+    objectFit: "cover",
+    borderRadius: 8,
   },
   status: {
     Pending: { color: "orange", fontWeight: "bold" },
@@ -386,44 +426,44 @@ const styles = {
     Delivered: { color: "green", fontWeight: "bold" },
   },
   saveBtn: {
-    margin: "4px 0",
-    backgroundColor: "#007bff",
-    color: "#fff",
-    border: "none",
-    padding: "4px 8px",
+    padding: "6px 12px",
+    marginBottom: 5,
     cursor: "pointer",
+    backgroundColor: "#4CAF50",
+    border: "none",
     borderRadius: 4,
+    color: "white",
   },
   detectBtn: {
-    margin: "4px 0",
-    backgroundColor: "#28a745",
-    color: "#fff",
-    border: "none",
-    padding: "4px 8px",
+    padding: "6px 12px",
     cursor: "pointer",
+    backgroundColor: "#2196F3",
+    border: "none",
     borderRadius: 4,
+    color: "white",
   },
   deleteBtn: {
-    backgroundColor: "#dc3545",
-    color: "#fff",
-    border: "none",
-    padding: "4px 8px",
+    padding: "6px 12px",
+    marginTop: 5,
     cursor: "pointer",
+    backgroundColor: "#f44336",
+    border: "none",
     borderRadius: 4,
-    marginLeft: 8,
+    color: "white",
+    display: "block",
   },
   trackBtn: {
-    backgroundColor: "#6c757d",
-    color: "#fff",
-    border: "none",
-    padding: "4px 8px",
+    padding: "6px 12px",
+    marginTop: 5,
     cursor: "pointer",
+    backgroundColor: "#673ab7",
+    border: "none",
     borderRadius: 4,
-    marginLeft: 8,
+    color: "white",
   },
   mapStyle: {
-    width: "100%",
     height: "400px",
+    width: "100%",
     marginTop: 20,
   },
 };
