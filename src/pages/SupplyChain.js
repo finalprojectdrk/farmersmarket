@@ -186,9 +186,9 @@ const SupplyChain = () => {
 
     try {
       const farmerName = farmerInfo?.name || "Unknown Farmer";
-      const farmerPhone = formatPhone(farmerInfo?.contact || "");
+      const farmerPhone = formatPhone(farmerInfo?.Phone || "");
 
-      const buyerPhone = formatPhone(order.contact || "");
+      const buyerPhone = formatPhone(order.Phone || "");
 
       // ✅ Notify Buyer
       if (isValidMobile(buyerPhone)) {
@@ -212,7 +212,7 @@ const SupplyChain = () => {
 
       for (const docSnap of farmerSnap.docs) {
         const farmer = docSnap.data();
-        const phone = formatPhone(farmer.contact || "");
+        const phone = formatPhone(farmer.Phone || "");
         if (isValidMobile(phone)) {
           await sendSMS(
             phone,
