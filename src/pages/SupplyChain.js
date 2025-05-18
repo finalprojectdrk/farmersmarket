@@ -1,471 +1,165 @@
+// Updated SupplyChain.js with working SMS/email logic and image display
 
 import React, { useEffect, useState } from "react";
 import {
   collection,
   onSnapshot,
-  doc,
   updateDoc,
-  deleteDoc,
+  doc,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import {
-  GoogleMap,
-  LoadScript,
-  Marker,
-  Polyline,
-} from "@react-google-maps/api";
+import { GoogleMap, DirectionsRenderer, LoadScript } from "@react-google-maps/api";
+import { sendSMS } from "../utils/sms";
+import { sendEmail } from "../utils/email";
+import "./SupplyChain.css";
 
-const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
-const SupplyChain = ({ currentUserRole = "farmer" }) => {
+const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [manualAddress, setManualAddress] = useState({});
-  const [trackingOrderId, setTrackingOrderId] = useState(null);
+  const [directions, setDirections] = useState({});
+  const [farmerLocation, setFarmerLocation] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "supplyChainOrders"),
-      (snapshot) => {
-        const orderData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setOrders(orderData);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Firestore error:", error);
-        setLoading(false);
-      }
-    );
+    const ordersRef = collection(db, "supplyChainOrders");
+    const unsubscribe = onSnapshot(ordersRef, (snapshot) => {
+      const orderList = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      }));
+      setOrders(orderList);
+    });
     return () => unsubscribe();
   }, []);
 
-  const sendSMSToBuyer = async (order, newStatus) => {
-    const trackingUrl = `https://farmerssmarket.com/track?id=${order.id}`;
-    try {
-      await fetch("/api/sms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          phoneNumber: order.buyerPhone,
-          message: `Hi ${order.buyer}, your order (${order.crop}) status is now "${newStatus}". Track here: ${trackingUrl}. Farmer: ${order.farmerName}, Mobile: ${order.farmerPhone}`,
-        }),
-      });
-    } catch (err) {
-      console.error("SMS to buyer error:", err);
-    }
-  };
-
-  const notifyAllFarmers = async (orderId) => {
-    try {
-      await fetch("/api/notifyFarmers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `Order ID ${orderId} status has changed. Please check your dashboard.`,
-        }),
-      });
-    } catch (err) {
-      console.error("Notify farmers error:", err);
-    }
-  };
-
-  const handleStatusChange = async (orderId, newStatus) => {
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return;
-
-    await updateDoc(doc(db, "supplyChainOrders", orderId), {
-      status: newStatus,
-    });
-
-    await sendSMSToBuyer(order, newStatus);
-    await notifyAllFarmers(orderId);
-  };
-
-  const deleteOrder = async (orderId) => {
-    if (window.confirm("Delete this delivered order?")) {
-      await deleteDoc(doc(db, "supplyChainOrders", orderId));
-    }
-  };
-
-  const autoDetectAndSave = async (orderId) => {
-    if (!navigator.geolocation) return alert("Geolocation not supported.");
-
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const address = await getAddressFromCoordinates(
-          coords.latitude,
-          coords.longitude
-        );
-        if (address) {
-          await updateDoc(doc(db, "supplyChainOrders", orderId), {
-            originAddress: address,
-            originLocation: {
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-            },
-          });
-          alert("Auto location saved!");
-        } else {
-          alert("Could not detect address.");
-        }
-      },
-      (err) => {
-        alert("Location error.");
-        console.error(err);
-      }
-    );
-  };
-
-  const saveManualLocation = async (orderId) => {
-    const address = manualAddress[orderId];
-    if (!address) return alert("Enter an address first.");
-
-    const coords = await getCoordinatesFromAddress(address);
-    if (coords) {
-      await updateDoc(doc(db, "supplyChainOrders", orderId), {
-        originAddress: address,
-        originLocation: {
-          latitude: coords.lat(),
-          longitude: coords.lng(),
-        },
-      });
-      alert("Manual location saved!");
-    } else {
-      alert("Could not geocode address.");
-    }
-  };
-
-  const getCoordinatesFromAddress = async (address) => {
-    if (!window.google?.maps) return null;
-
+  const getCoordinates = async (address) => {
     const geocoder = new window.google.maps.Geocoder();
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       geocoder.geocode({ address }, (results, status) => {
-        if (status === "OK" && results[0]) {
+        if (status === "OK") {
           resolve(results[0].geometry.location);
         } else {
-          resolve(null);
+          reject("Geocode error: " + status);
         }
       });
     });
   };
 
-  const getAddressFromCoordinates = async (lat, lng) => {
-    if (!window.google?.maps) return null;
+  const handleTrack = async (order) => {
+    if (!farmerLocation) return alert("Enter your location first");
+    try {
+      const origin = await getCoordinates(farmerLocation);
+      const destination = new window.google.maps.LatLng(
+        order.location.latitude,
+        order.location.longitude
+      );
+      const directionsService = new window.google.maps.DirectionsService();
 
-    const geocoder = new window.google.maps.Geocoder();
-    return new Promise((resolve) => {
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status === "OK" && results[0]) {
-          resolve(results[0].formatted_address);
-        } else {
-          resolve(null);
+      directionsService.route(
+        {
+          origin,
+          destination,
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        },
+        (result, status) => {
+          if (status === "OK") {
+            setDirections((prev) => ({ ...prev, [order.id]: result }));
+          } else {
+            alert("Directions request failed: " + status);
+          }
         }
-      });
-    });
+      );
+    } catch (err) {
+      alert("Tracking failed: " + err);
+    }
   };
 
-  const renderPolyline = (order) => {
-    const points = [];
+  const handleStatusUpdate = async (order, newStatus) => {
+    setLoading(true);
+    try {
+      const orderRef = doc(db, "supplyChainOrders", order.id);
+      await updateDoc(orderRef, { status: newStatus });
 
-    if (order.originLocation) {
-      points.push({
-        lat: order.originLocation.latitude,
-        lng: order.originLocation.longitude,
-      });
+      const trackingUrl = window.location.href;
+      const buyerPhone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
+
+      await sendSMS(
+        buyerPhone,
+        `Hi ${order.buyer}, your order (${order.crop}) status is now \"${newStatus}\". Track here: ${trackingUrl}. Farmer: ${order.farmerName || "N/A"}, Mobile: ${order.farmerPhone || "N/A"}`
+      );
+
+      const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
+      const farmersSnap = await getDocs(farmersQuery);
+
+      await Promise.all(
+        farmersSnap.docs.map((docSnap) => {
+          const farmer = docSnap.data();
+          const phone = farmer.phone?.startsWith("+91") ? farmer.phone : `+91${farmer.phone}`;
+          return sendSMS(phone, `Order ${order.orderId} is now ${newStatus}.`);
+        })
+      );
+
+      if (order.buyerEmail) {
+        await sendEmail(
+          order.buyerEmail,
+          `Order ${order.orderId} Status Update`,
+          `Hi ${order.buyer},\n\nYour order (${order.crop}) is now marked as \"${newStatus}\".\n\nTrack here: ${trackingUrl}`
+        );
+      }
+
+      alert("Status updated and notifications sent");
+    } catch (error) {
+      console.error("Status update failed:", error);
+      alert("Error updating status");
     }
-
-    if (order.trackingLocation) {
-      points.push({
-        lat: order.trackingLocation.latitude,
-        lng: order.trackingLocation.longitude,
-      });
-    }
-
-    if (order.location) {
-      points.push({
-        lat: order.location.latitude,
-        lng: order.location.longitude,
-      });
-    }
-
-    return points.length >= 2 ? (
-      <Polyline
-        path={points}
-        options={{
-          strokeColor: "#FF0000",
-          strokeOpacity: 0.8,
-          strokeWeight: 4,
-        }}
-      />
-    ) : null;
-  };
-
-  const getCenterFromPoints = (points) => {
-    if (!points.length) return { lat: 12.9716, lng: 77.5946 };
-    const latSum = points.reduce((sum, p) => sum + p.lat, 0);
-    const lngSum = points.reduce((sum, p) => sum + p.lng, 0);
-    return { lat: latSum / points.length, lng: lngSum / points.length };
+    setLoading(false);
   };
 
   return (
-    <div style={styles.container}>
-      <h2>🚜 Supply Chain Dashboard</h2>
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+      <div className="supply-chain-container">
+        <h2>📦 Supply Chain Tracking</h2>
 
-      {loading ? (
-        <p>Loading orders...</p>
-      ) : (
-        <>
-          <div style={{ overflowX: "auto" }}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th>Crop</th>
-                  <th>Buyer</th>
-                  <th>Buyer Address</th>
-                  <th>Buyer Mobile</th>
-                  <th>Status</th>
-                  <th>Farmer Location</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id}>
-                    <td>
-                      <div style={styles.imageBox}>
-                        <img
-                          src={order.image}
-                          alt={order.crop}
-                          className="order-image"
-                          style={styles.cropImage}
-                        />
-                        <span>{order.crop || "N/A"}</span>
-                      </div>
-                    </td>
-                    <td>{order.buyer || "N/A"}</td>
-                    <td>{order.buyerAddress || "N/A"}</td>
-                    <td>{order.buyerPhone || "N/A"}</td>
-                    <td style={styles.status[order.status] || { fontWeight: "bold" }}>
-                      {order.status}
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        placeholder="Enter address"
-                        value={manualAddress[order.id] || ""}
-                        onChange={(e) =>
-                          setManualAddress((prev) => ({
-                            ...prev,
-                            [order.id]: e.target.value,
-                          }))
-                        }
-                        style={{ width: "100%", marginBottom: 5 }}
-                        aria-label="Manual address input"
-                      />
-                      <button
-                        onClick={() => saveManualLocation(order.id)}
-                        style={styles.saveBtn}
-                        aria-label="Save manual location"
-                      >
-                        Save Manual Location
-                      </button>
-                      <br />
-                      <button
-                        onClick={() => autoDetectAndSave(order.id)}
-                        style={styles.detectBtn}
-                        aria-label="Auto detect and save location"
-                      >
-                        Auto Detect & Save
-                      </button>
-                      <p style={{ fontSize: "12px", marginTop: "5px" }}>
-                        {order.originAddress || "Not set"}
-                      </p>
-                    </td>
-                    <td>
-                      <select
-                        value={order.status}
-                        onChange={(e) =>
-                          handleStatusChange(order.id, e.target.value)
-                        }
-                        aria-label="Order status select"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="In Transit">In Transit</option>
-                        <option value="Shipped">Shipped</option>
-                        <option value="Delivered">Delivered</option>
-                      </select>
-                      {currentUserRole === "farmer" && order.status === "Delivered" && (
-                        <button
-                          onClick={() => deleteOrder(order.id)}
-                          style={styles.deleteBtn}
-                          aria-label="Delete delivered order"
-                        >
-                          Delete
-                        </button>
-                      )}
-                      <button
-                        onClick={() =>
-                          setTrackingOrderId(trackingOrderId === order.id ? null : order.id)
-                        }
-                        style={styles.trackBtn}
-                        aria-label="Toggle tracking map"
-                      >
-                        {trackingOrderId === order.id ? "Hide Map" : "Track"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <input
+          placeholder="Enter Farmer Location (e.g. Coimbatore, TN)"
+          value={farmerLocation}
+          onChange={(e) => setFarmerLocation(e.target.value)}
+        />
+
+        {orders.map((order) => (
+          <div key={order.id} className="order-card">
+            <img src={order.image} alt={order.crop} width={80} height={80} />
+            <h4>{order.crop}</h4>
+            <p>Buyer: {order.buyer}</p>
+            <p>Phone: {order.contact}</p>
+            <p>Status: {order.status}</p>
+            <div>
+              <button onClick={() => handleTrack(order)}>📍 Track</button>
+              <button onClick={() => handleStatusUpdate(order, "In Transit")} disabled={loading}>
+                🚚 Mark In Transit
+              </button>
+              <button onClick={() => handleStatusUpdate(order, "Delivered")} disabled={loading}>
+                ✅ Mark Delivered
+              </button>
+            </div>
+            {directions[order.id] && (
+              <GoogleMap
+                mapContainerStyle={{ height: "300px", width: "100%" }}
+                center={directions[order.id].routes[0].overview_path[0]}
+                zoom={10}
+              >
+                <DirectionsRenderer directions={directions[order.id]} />
+              </GoogleMap>
+            )}
           </div>
-
-          {trackingOrderId && (
-            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-              {orders
-                .filter((order) => order.id === trackingOrderId)
-                .map((order) => {
-                  const points = [];
-
-                  if (order.originLocation) {
-                    points.push({
-                      lat: order.originLocation.latitude,
-                      lng: order.originLocation.longitude,
-                    });
-                  }
-                  if (order.trackingLocation) {
-                    points.push({
-                      lat: order.trackingLocation.latitude,
-                      lng: order.trackingLocation.longitude,
-                    });
-                  }
-                  if (order.location) {
-                    points.push({
-                      lat: order.location.latitude,
-                      lng: order.location.longitude,
-                    });
-                  }
-
-                  const center = getCenterFromPoints(points);
-
-                  return (
-                    <GoogleMap
-                      key={order.id}
-                      mapContainerStyle={styles.mapStyle}
-                      center={center}
-                      zoom={8}
-                    >
-                      {order.originLocation && (
-                        <Marker
-                          position={{
-                            lat: order.originLocation.latitude,
-                            lng: order.originLocation.longitude,
-                          }}
-                          label="Farmer"
-                          icon="http://maps.google.com/mapfiles/ms/icons/green-dot.png"
-                        />
-                      )}
-                      {order.trackingLocation && (
-                        <Marker
-                          position={{
-                            lat: order.trackingLocation.latitude,
-                            lng: order.trackingLocation.longitude,
-                          }}
-                          label="Transport"
-                          icon="http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
-                        />
-                      )}
-                      {order.location && (
-                        <Marker
-                          position={{
-                            lat: order.location.latitude,
-                            lng: order.location.longitude,
-                          }}
-                          label="Buyer"
-                          icon="http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
-                        />
-                      )}
-                      {renderPolyline(order)}
-                    </GoogleMap>
-                  );
-                })}
-            </LoadScript>
-          )}
-        </>
-      )}
-    </div>
+        ))}
+      </div>
+    </LoadScript>
   );
-};
-
-const styles = {
-  container: {
-    padding: 20,
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-  imageBox: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-  cropImage: {
-    width: 60,
-    height: 60,
-    objectFit: "cover",
-    borderRadius: 8,
-  },
-  status: {
-    Pending: { color: "orange", fontWeight: "bold" },
-    "In Transit": { color: "blue", fontWeight: "bold" },
-    Shipped: { color: "purple", fontWeight: "bold" },
-    Delivered: { color: "green", fontWeight: "bold" },
-  },
-  saveBtn: {
-    padding: "6px 12px",
-    marginBottom: 5,
-    cursor: "pointer",
-    backgroundColor: "#4CAF50",
-    border: "none",
-    borderRadius: 4,
-    color: "white",
-  },
-  detectBtn: {
-    padding: "6px 12px",
-    cursor: "pointer",
-    backgroundColor: "#2196F3",
-    border: "none",
-    borderRadius: 4,
-    color: "white",
-  },
-  deleteBtn: {
-    padding: "6px 12px",
-    marginTop: 5,
-    cursor: "pointer",
-    backgroundColor: "#f44336",
-    border: "none",
-    borderRadius: 4,
-    color: "white",
-    display: "block",
-  },
-  trackBtn: {
-    padding: "6px 12px",
-    marginTop: 5,
-    cursor: "pointer",
-    backgroundColor: "#673ab7",
-    border: "none",
-    borderRadius: 4,
-    color: "white",
-  },
-  mapStyle: {
-    height: "400px",
-    width: "100%",
-    marginTop: 20,
-  },
 };
 
 export default SupplyChain;
