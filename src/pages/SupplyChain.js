@@ -1,4 +1,4 @@
-// Complete and refactored SupplyChainTracking.js with SMS notifications for all farmers and the specific buyer
+""// Enhanced SupplyChainTracking.js with full UI, map, and notification logic
 
 import React, { useEffect, useState } from 'react';
 import { collection, onSnapshot, updateDoc, doc, getDocs, query, where } from 'firebase/firestore';
@@ -14,9 +14,11 @@ const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
 const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [directions, setDirections] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [farmerInfo, setFarmerInfo] = useState({});
   const user = useAuth();
 
+  // Fetch Orders
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'supplyChainOrders'), (snapshot) => {
       const data = snapshot.docs
@@ -27,6 +29,7 @@ const SupplyChain = () => {
     return () => unsub();
   }, []);
 
+  // Fetch Farmer Info
   useEffect(() => {
     const fetchFarmer = async () => {
       const q = query(
@@ -43,17 +46,16 @@ const SupplyChain = () => {
     if (user?.email) fetchFarmer();
   }, [user]);
 
+  // Handle Status Update
   const handleStatusUpdate = async (order, newStatus) => {
     const orderRef = doc(db, 'supplyChainOrders', order.id);
     await updateDoc(orderRef, { status: newStatus });
 
     try {
-      // Fetch all farmers
       const farmersQuery = query(collection(db, 'users'), where('role', '==', 'farmer'));
       const farmerSnapshots = await getDocs(farmersQuery);
       const farmerPhones = farmerSnapshots.docs.map((doc) => doc.data().phone);
 
-      // Send SMS to all farmers
       for (const phone of farmerPhones) {
         await sendSMS(
           phone.startsWith('+91') ? phone : `+91${phone}`,
@@ -62,14 +64,11 @@ const SupplyChain = () => {
       }
       console.log('✅ All farmers notified.');
 
-      // Fetch the buyer's phone number
       const buyerQuery = query(collection(db, 'users'), where('email', '==', order.email));
       const buyerSnapshot = await getDocs(buyerQuery);
 
       if (!buyerSnapshot.empty) {
         const buyerPhone = buyerSnapshot.docs[0].data().phone;
-
-        // Send SMS to the buyer
         if (buyerPhone) {
           await sendSMS(
             buyerPhone.startsWith('+91') ? buyerPhone : `+91${buyerPhone}`,
@@ -78,24 +77,62 @@ const SupplyChain = () => {
         }
       }
 
-      // Send Email to the buyer
       if (order.email) {
         await sendEmail(
           order.email,
           'Order Status Updated',
-          `Hi ${order.buyer},\n\nYour order (${order.orderId}) status is now: ${newStatus}.\n\nThanks,\nFarmers Market`
+          `Hi ${order.buyer},
+
+Your order (${order.orderId}) status is now: ${newStatus}.
+
+Thanks,
+Farmers Market`
         );
       }
 
-      alert('✅ Status updated & notifications sent to all farmers and the buyer.');
+      alert('✅ Status updated & notifications sent.');
     } catch (error) {
       console.error('❌ Notification error:', error);
     }
   };
 
+  // Render Component
   return (
-    <div>Supply Chain Component Loaded</div>
+    <div className="supplychain-container">
+      <h2>🚚 Supply Chain Tracking</h2>
+      <div className="orders-list">
+        {orders.length > 0 ? (
+          orders.map((order) => (
+            <div key={order.id} className="order-card">
+              <h3>Order ID: {order.orderId}</h3>
+              <p><strong>Crop:</strong> {order.crop}</p>
+              <p><strong>Quantity:</strong> {order.quantity}</p>
+              <p><strong>Buyer:</strong> {order.buyer}</p>
+              <p><strong>Contact:</strong> {order.contact}</p>
+              <p><strong>Status:</strong> {order.status}</p>
+              <button onClick={() => handleStatusUpdate(order, 'Shipped')}>📦 Shipped</button>
+              <button onClick={() => handleStatusUpdate(order, 'In Transit')}>🚚 In Transit</button>
+              <button onClick={() => handleStatusUpdate(order, 'Delivered')}>✅ Delivered</button>
+            </div>
+          ))
+        ) : (
+          <p>No Orders Found</p>
+        )}
+      </div>
+      {directions && (
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+          <GoogleMap
+            mapContainerStyle={{ width: '100%', height: '400px' }}
+            center={directions.routes[0].overview_path[0]}
+            zoom={10}
+          >
+            <DirectionsRenderer directions={directions} />
+          </GoogleMap>
+        </LoadScript>
+      )}
+    </div>
   );
 };
 
 export default SupplyChain;
+""
