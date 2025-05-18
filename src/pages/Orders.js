@@ -10,7 +10,7 @@ import { useAuth } from "../auth";
 import { GoogleMap, DirectionsRenderer, LoadScript } from "@react-google-maps/api";
 
 // Replace with your actual API key for Google Maps
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY";
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
 const Orders = () => {
   const user = useAuth();
