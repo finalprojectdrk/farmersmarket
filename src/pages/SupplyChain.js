@@ -29,13 +29,11 @@ const SupplyChain = () => {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "supplyChainOrders"), (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const data = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((order) => !order.farmerDeleted);
       setOrders(data);
     });
-
     return () => unsub();
   }, []);
 
@@ -52,10 +50,7 @@ const SupplyChain = () => {
         setFarmerInfo(doc);
       }
     };
-
-    if (user?.email) {
-      fetchFarmer();
-    }
+    if (user?.email) fetchFarmer();
   }, [user]);
 
   const handleTrack = async (order) => {
@@ -63,74 +58,62 @@ const SupplyChain = () => {
       alert("Invalid buyer location.");
       return;
     }
-
     if (!navigator.geolocation) {
       alert("Geolocation not supported.");
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const origin = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         };
-
         const destination = {
           lat: order.location.latitude,
           lng: order.location.longitude,
         };
-
         const directionsService = new window.google.maps.DirectionsService();
         const result = await directionsService.route({
           origin,
           destination,
           travelMode: window.google.maps.TravelMode.DRIVING,
         });
-
         setDirections(result);
       },
       () => alert("Failed to get current location.")
     );
   };
 
+  const geocodeCoords = async (lat, lng) => {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await response.json();
+    return data.results[0]?.formatted_address || `Lat: ${lat}, Lng: ${lng}`;
+  };
+
   const handleManualLocationChange = async (orderId, address) => {
     const orderRef = doc(db, "supplyChainOrders", orderId);
-    await updateDoc(orderRef, {
-      farmerAddress: address,
-    });
+    await updateDoc(orderRef, { farmerAddress: address });
   };
 
   const detectFarmerLocation = async (orderId) => {
     if (!navigator.geolocation) return alert("Geolocation not supported");
-
     navigator.geolocation.getCurrentPosition(async (pos) => {
-      const coords = `Lat: ${pos.coords.latitude}, Lng: ${pos.coords.longitude}`;
+      const address = await geocodeCoords(pos.coords.latitude, pos.coords.longitude);
       const orderRef = doc(db, "supplyChainOrders", orderId);
-      await updateDoc(orderRef, {
-        farmerAddress: coords,
-      });
+      await updateDoc(orderRef, { farmerAddress: address });
     });
   };
 
   const handleStatusUpdate = async (order, newStatus) => {
     const orderRef = doc(db, "supplyChainOrders", order.id);
     await updateDoc(orderRef, { status: newStatus });
-
     try {
-      const phone = order.contact.startsWith("+91")
-        ? order.contact
-        : `+91${order.contact}`;
-
+      const phone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
       const farmerName = farmerInfo?.name || "Unknown Farmer";
       const farmerPhone = farmerInfo?.phone || "N/A";
-
-      // Notify buyer
-      await sendSMS(
-        phone,
-        `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
-      );
-
+      await sendSMS(phone, `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`);
       const buyerEmail = order.email;
       if (buyerEmail) {
         await sendEmail(
@@ -139,10 +122,17 @@ const SupplyChain = () => {
           `Hi ${order.buyer},\n\nYour order (${order.orderId}) status is now: ${newStatus}.\n\n👨‍🌾 Farmer: ${farmerName}\n📞 Contact: ${farmerPhone}\n\nThanks,\nFarmers Market`
         );
       }
-
       alert("✅ Status updated & buyer notified.");
     } catch (error) {
       console.error("Notification error:", error);
+    }
+  };
+
+  const handleDelete = async (orderId) => {
+    if (window.confirm("Are you sure you want to delete this delivered order from your view?")) {
+      const orderRef = doc(db, "supplyChainOrders", orderId);
+      await updateDoc(orderRef, { farmerDeleted: true });
+      alert("✅ Order removed from your view.");
     }
   };
 
@@ -158,7 +148,7 @@ const SupplyChain = () => {
               <div><strong>Crop:</strong> {order.crop}</div>
               <div><strong>Quantity:</strong> {order.quantity}</div>
               <div><strong>Buyer:</strong> {order.buyer}</div>
-              <div><strong>Buyer:</strong> {order.address}</div>
+              <div><strong>Buyer Address:</strong> {order.address}</div>
               <div><strong>Contact:</strong> {order.contact}</div>
               <div><strong>Status:</strong> {order.status}</div>
               <div><strong>Farmer Address:</strong> {order.farmerAddress || "Not set"}</div>
@@ -166,18 +156,17 @@ const SupplyChain = () => {
                 type="text"
                 placeholder="Enter your location"
                 value={order.farmerAddress || ""}
-                onChange={(e) =>
-                  handleManualLocationChange(order.id, e.target.value)
-                }
+                onChange={(e) => handleManualLocationChange(order.id, e.target.value)}
               />
-              <button onClick={() => detectFarmerLocation(order.id)}>
-                📍 Detect Location
-              </button>
+              <button onClick={() => detectFarmerLocation(order.id)}>📍 Detect Location</button>
               <div className="order-buttons">
                 <button onClick={() => handleTrack(order)}>🗺️ Track</button>
                 <button onClick={() => handleStatusUpdate(order, "Shipped")}>📦 Shipped</button>
                 <button onClick={() => handleStatusUpdate(order, "In Transit")}>🚚 In Transit</button>
                 <button onClick={() => handleStatusUpdate(order, "Delivered")}>✅ Delivered</button>
+                {order.status === "Delivered" && (
+                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white" }}>🗑️ Delete</button>
+                )}
               </div>
             </div>
           ))}
