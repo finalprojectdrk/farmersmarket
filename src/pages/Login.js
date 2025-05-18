@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaLock, FaEnvelope, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { sendSMS } from '../utils/sms';
 import { sendEmail } from '../utils/email';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../firebase"; // Make sure you have firebase.js set up properly
+import { auth, db } from "../firebase";
 
 const Login = ({ setIsLoggedIn, setUserType }) => {
   const [user, setUser] = useState({ email: "", password: "" });
-  const [passwordVisible, setPasswordVisible] = useState(false); // State to toggle password visibility
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -22,11 +22,8 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
     }
 
     try {
-      // ✅ Firebase authentication
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const userId = userCredential.user.uid;
-
-      // ✅ Fetch user profile from Firestore
       const userDoc = await getDoc(doc(db, "users", userId));
 
       if (!userDoc.exists()) {
@@ -36,9 +33,8 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
 
       const userData = userDoc.data();
 
-      // ✅ Save login session
       localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userType", userData.role); // role must be stored while registration
+      localStorage.setItem("userType", userData.role);
       localStorage.setItem("userEmail", userData.email);
       localStorage.setItem("phonenumber", userData.phone);
 
@@ -50,10 +46,8 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
       try {
         const cleanedPhone = userData.phone.startsWith("+91") ? userData.phone : `+91${userData.phone}`;
 
-        // 🔥 Send login SMS
         await sendSMS(cleanedPhone, `Hi ${userData.name}, you have successfully logged into Farmers Market.`);
 
-        // 🔥 Send login Email
         await sendEmail(
           userData.email,
           "Login Successful - Farmers Market",
@@ -65,7 +59,6 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
         console.error("Error sending SMS/Email:", error);
       }
 
-      // ✅ Navigate to user selection
       setTimeout(() => {
         navigate("/user-selection");
       }, 1000);
@@ -80,17 +73,24 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
     <div style={{
       width: '100%',
       maxWidth: '400px',
-      margin: '0 auto',
-      padding: '20px',
+      margin: '40px auto',
+      padding: '30px',
       backgroundColor: '#fff',
       borderRadius: '8px',
       boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-      textAlign: 'center'
+      boxSizing: 'border-box'
     }}>
-      <h2 style={{ marginBottom: '20px' }}>Login</h2>
+      <h2 style={{ textAlign: 'center', marginBottom: '24px' }}>Login</h2>
       <form onSubmit={handleLogin}>
+        {/* Email Field */}
         <div style={{ position: 'relative', marginBottom: '20px' }}>
-          <FaEnvelope style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
+          <FaEnvelope style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: '#888'
+          }} />
           <input
             type="email"
             placeholder="Email"
@@ -99,66 +99,65 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
             required
             style={{
               width: '100%',
-              padding: '10px 40px',
+              padding: '10px 12px 10px 38px',
               borderRadius: '4px',
               border: '1px solid #ccc',
               fontSize: '16px',
-              color: '#333'
+              boxSizing: 'border-box'
             }}
           />
         </div>
 
+        {/* Password Field */}
         <div style={{ position: 'relative', marginBottom: '20px' }}>
-          <FaLock style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
+          <FaLock style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: '#888'
+          }} />
           <input
-            type={passwordVisible ? "text" : "password"} // Toggle password visibility
+            type={passwordVisible ? "text" : "password"}
             placeholder="Password"
             value={user.password}
             onChange={(e) => setUser({ ...user, password: e.target.value })}
             required
             style={{
               width: '100%',
-              padding: '10px 40px',
+              padding: '10px 38px 10px 38px',
               borderRadius: '4px',
               border: '1px solid #ccc',
               fontSize: '16px',
-              color: '#333'
+              boxSizing: 'border-box'
             }}
           />
-          {/* Eye icon to toggle password visibility */}
-          <span 
-            onClick={() => setPasswordVisible(!passwordVisible)}
-            style={{
-              position: 'absolute',
-              right: '10px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              cursor: 'pointer',
-              color: '#888'
-            }}
-          >
+          <span onClick={() => setPasswordVisible(!passwordVisible)} style={{
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            cursor: 'pointer',
+            color: '#888'
+          }}>
             {passwordVisible ? <FaEyeSlash /> : <FaEye />}
           </span>
         </div>
 
-        <button 
-          type="submit" 
-          style={{
-            width: '100%',
-            padding: '12px',
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '16px',
-            cursor: 'pointer',
-            marginTop: '10px'
-          }}
-        >
+        <button type="submit" style={{
+          width: '100%',
+          padding: '12px',
+          backgroundColor: '#4CAF50',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '4px',
+          fontSize: '16px',
+          cursor: 'pointer'
+        }}>
           Login
         </button>
       </form>
-      <p style={{ marginTop: '20px' }}>
+      <p style={{ textAlign: 'center', marginTop: '20px' }}>
         Don't have an account? <a href="/register" style={{ color: '#4CAF50', textDecoration: 'none' }}>Register here</a>
       </p>
     </div>
