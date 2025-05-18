@@ -29,7 +29,7 @@ const FarmerDashboard = () => {
       
       {/* 📌 Secondary Navbar */}
       <nav className="secondary-navbar">
-        /*<button onClick={() => navigate("/add-product")}>➕ Add Product</button>*/
+        
         <button onClick={() => navigate("/real-time-prices")}>📊 Real-Time Prices</button>
         <button onClick={() => navigate("/supply-chain")}>🚜 Supply Chain</button>
       </nav>
@@ -64,7 +64,7 @@ const FarmerDashboard = () => {
 
       {/* 🌾 Attractive Farmer Resources Section */}
       <div className="resources-section">
-        <h2>📢 Farmer Resources & Updates</h2>
+        <h2>📢 Farmer Resources &0 Updates</h2>
         <div className="resources-grid">
           {[
             { img: farmingTipsImg, title: "🌱 Best Farming Practices", desc: "Learn modern techniques to increase crop yield and soil health.",url:" https://farmech.dac.gov.in/"},
