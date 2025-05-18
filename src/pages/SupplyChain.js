@@ -1,4 +1,3 @@
-// SupplyChain.js
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -26,23 +25,15 @@ const LIBRARIES = ["places"];
 const correctPhoneNumber = (number) => {
   if (!number) return "";
   const sanitized = number.toString().replace(/\D/g, "");
-  if (sanitized.startsWith("91")) return `+${sanitized}`;
-  if (sanitized.length === 10) return `+91${sanitized}`;
-  return `+${sanitized}`;
-};
 
-// Geocode coordinates to human-readable address
-const geocodeCoords = async (lat, lng) => {
-  try {
-    const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
-    );
-    const data = await response.json();
-    return data.results[0]?.formatted_address || `Lat: ${lat}, Lng: ${lng}`;
-  } catch (error) {
-    console.error("Error geocoding coordinates:", error);
-    return `Lat: ${lat}, Lng: ${lng}`; // Fallback if geocoding fails
+  // Ensure the number starts with '+91' for India or has 10 digits
+  if (sanitized.startsWith("91") && sanitized.length === 12) {
+    return `+${sanitized}`;
+  } else if (sanitized.length === 10) {
+    return `+91${sanitized}`;
   }
+  alert(`Invalid phone number: ${number}`);
+  return null; // Return null for invalid numbers
 };
 
 const SupplyChain = () => {
@@ -78,16 +69,15 @@ const SupplyChain = () => {
   }, [user]);
 
   const getDistance = (a, b) => {
-    const R = 6371; // Earth radius in kilometers
+    const R = 6371;
     const dLat = (b.lat - a.lat) * Math.PI / 180;
     const dLon = (b.lng - a.lng) * Math.PI / 180;
     const lat1 = a.lat * Math.PI / 180;
     const lat2 = b.lat * Math.PI / 180;
-    const aCalc =
-      Math.sin(dLat / 2) ** 2 +
+    const aCalc = Math.sin(dLat / 2) ** 2 +
       Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(aCalc), Math.sqrt(1 - aCalc));
-    return R * c; // Returns distance in kilometers
+    return R * c;
   };
 
   const handleTrack = async (order) => {
@@ -163,21 +153,17 @@ const SupplyChain = () => {
     }
   };
 
+  const geocodeCoords = async (lat, lng) => {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await response.json();
+    return data.results[0]?.formatted_address || `Lat: ${lat}, Lng: ${lng}`;
+  };
+
   const handleManualLocationChange = async (orderId, address) => {
     const orderRef = doc(db, "supplyChainOrders", orderId);
     await updateDoc(orderRef, { farmerAddress: address });
-  };
-
-  const detectFarmerLocation = async (orderId) => {
-    if (!navigator.geolocation) return alert("Geolocation not supported");
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      const address = await geocodeCoords(
-        pos.coords.latitude,
-        pos.coords.longitude
-      );
-      const orderRef = doc(db, "supplyChainOrders", orderId);
-      await updateDoc(orderRef, { farmerAddress: address });
-    });
   };
 
   const handleStatusUpdate = async (order, newStatus) => {
@@ -202,29 +188,6 @@ const SupplyChain = () => {
           `Hi ${order.buyer},\n\nYour order (${order.orderId}) is now: ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}\n📞 ${farmerPhone}\n\nThanks,\nFarmers Market`
         );
       }
-
-      // Notify all farmers
-      const farmerQuery = query(
-        collection(db, "users"),
-        where("role", "==", "farmer")
-      );
-      const farmerSnapshot = await getDocs(farmerQuery);
-      const farmers = farmerSnapshot.docs.map(doc => doc.data());
-
-      farmers.forEach(async (farmer) => {
-        const farmerPhone = correctPhoneNumber(farmer.phone || "");
-        if (newStatus === "Shipped" && farmerPhone) {
-          await sendSMS(
-            farmerPhone,
-            `✅ You have marked order (${order.orderId}) as SHIPPED.`
-          );
-          await sendEmail(
-            farmer.email,
-            "Order Shipped Confirmation",
-            `Hi ${farmer.name},\n\nYou have shipped order ${order.orderId} to ${order.buyer}.\n\nThanks,\nFarmers Market`
-          );
-        }
-      });
 
       alert("✅ Status updated & notifications sent.");
     } catch (error) {
@@ -264,20 +227,14 @@ const SupplyChain = () => {
                 value={order.farmerAddress || ""}
                 onChange={(e) => handleManualLocationChange(order.id, e.target.value)}
               />
-              <button onClick={() => detectFarmerLocation(order.id)}>
-                📍 Detect Location
-              </button>
+              <button onClick={() => handleTrack(order)}>🗺️ Track</button>
 
               <div className="order-buttons">
-                <button onClick={() => handleTrack(order)}>🗺️ Track</button>
                 <button onClick={() => handleStatusUpdate(order, "Shipped")}>📦 Shipped</button>
                 <button onClick={() => handleStatusUpdate(order, "In Transit")}>🚚 In Transit</button>
                 <button onClick={() => handleStatusUpdate(order, "Delivered")}>✅ Delivered</button>
                 {order.status === "Delivered" && (
-                  <button
-                    onClick={() => handleDelete(order.id)}
-                    style={{ backgroundColor: "red", color: "white" }}
-                  >
+                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white" }}>
                     🗑️ Delete
                   </button>
                 )}
@@ -285,6 +242,18 @@ const SupplyChain = () => {
             </div>
           ))}
         </div>
+
+        {directions && (
+          <div className="map-container">
+            <GoogleMap
+              mapContainerStyle={{ width: "100%", height: "400px" }}
+              center={directions.routes[0].overview_path[0]}
+              zoom={10}
+            >
+              <DirectionsRenderer directions={directions} />
+            </GoogleMap>
+          </div>
+        )}
       </div>
     </LoadScript>
   );
