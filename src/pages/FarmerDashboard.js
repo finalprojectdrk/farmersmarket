@@ -29,7 +29,7 @@ const FarmerDashboard = () => {
       
       {/* 📌 Secondary Navbar */}
       <nav className="secondary-navbar">
-        <button onClick={() => navigate("/add-product")}>➕ Add Product</button>
+        /*<button onClick={() => navigate("/add-product")}>➕ Add Product</button>*/
         <button onClick={() => navigate("/real-time-prices")}>📊 Real-Time Prices</button>
         <button onClick={() => navigate("/supply-chain")}>🚜 Supply Chain</button>
       </nav>
