@@ -40,6 +40,7 @@ const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [directions, setDirections] = useState(null);
   const [farmerInfo, setFarmerInfo] = useState({});
+  const [allFarmers, setAllFarmers] = useState([]); // State to hold all farmers
   const user = useAuth();
 
   useEffect(() => {
@@ -67,6 +68,20 @@ const SupplyChain = () => {
     };
     if (user?.email) fetchFarmer();
   }, [user]);
+
+  useEffect(() => {
+    // Fetch all farmers' phone numbers
+    const fetchAllFarmers = async () => {
+      const farmersRef = query(
+        collection(db, "users"),
+        where("role", "==", "farmer")
+      );
+      const querySnapshot = await getDocs(farmersRef);
+      const farmers = querySnapshot.docs.map((doc) => doc.data());
+      setAllFarmers(farmers);
+    };
+    fetchAllFarmers();
+  }, []);
 
   const getDistance = (a, b) => {
     const R = 6371;
@@ -204,6 +219,43 @@ const SupplyChain = () => {
     }
   };
 
+  const handleSendMessageToAllFarmers = async () => {
+    try {
+      for (const farmer of allFarmers) {
+        const farmerPhone = correctPhoneNumber(farmer.phone);
+        if (farmerPhone) {
+          await sendSMS(
+            farmerPhone,
+            `📦 Your orders are being tracked, and the status is updated. Please check your supply chain status.`
+          );
+        }
+      }
+      alert("✅ Message sent to all farmers.");
+    } catch (error) {
+      console.error("Error sending message to all farmers", error);
+      alert("❌ Failed to send message to all farmers.");
+    }
+  };
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      alert("❌ Geolocation not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        alert(`Your location detected: Lat: ${latitude}, Lng: ${longitude}`);
+        // You can use this latitude and longitude for further use
+      },
+      (error) => {
+        alert("❌ Failed to detect location.");
+        console.error(error);
+      }
+    );
+  };
+
   return (
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES}>
       <div className="supplychain-container">
@@ -228,6 +280,7 @@ const SupplyChain = () => {
                 onChange={(e) => handleManualLocationChange(order.id, e.target.value)}
               />
               <button onClick={() => handleTrack(order)}>🗺️ Track</button>
+              <button onClick={handleDetectLocation}>📍 Detect Location</button>
 
               <div className="order-buttons">
                 <button onClick={() => handleStatusUpdate(order, "Shipped")}>📦 Shipped</button>
@@ -242,6 +295,10 @@ const SupplyChain = () => {
             </div>
           ))}
         </div>
+
+        <button onClick={handleSendMessageToAllFarmers} className="send-message-button">
+          📱 Send message to all Farmers
+        </button>
 
         {directions && (
           <div className="map-container">
