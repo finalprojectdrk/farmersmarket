@@ -37,8 +37,8 @@ const imageStyle = {
 export default function SupplyChain() {
   const [orders, setOrders] = useState([]);
   const [directions, setDirections] = useState({});
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
+  //const { isLoaded } = useLoadScript({
+  //  googleMapsApiKey: "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
     libraries
   });
 
