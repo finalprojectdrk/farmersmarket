@@ -69,52 +69,88 @@ const SupplyChain = () => {
   };
 
   const handleTrack = async (order) => {
-    if (!order.location?.latitude || !order.location?.longitude) {
-      alert("Invalid buyer location.");
-      return;
-    }
-    if (!navigator.geolocation) {
-      alert("Geolocation not supported.");
-      return;
-    }
+    const destination = {
+      lat: order.location.latitude,
+      lng: order.location.longitude,
+    };
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const origin = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-        const destination = {
-          lat: order.location.latitude,
-          lng: order.location.longitude,
-        };
+    let origin;
 
-        console.log("Origin:", origin);
-        console.log("Destination:", destination);
-
-        const distance = getDistance(origin, destination);
-        console.log("Distance:", distance.toFixed(2), "km");
-
-        if (distance > 2000) {
-          alert("❌ Cannot generate route: Buyer is too far for road travel.");
+    if (order.farmerAddress) {
+      try {
+        const geoResponse = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+            order.farmerAddress
+          )}&key=${GOOGLE_MAPS_API_KEY}`
+        );
+        const geoData = await geoResponse.json();
+        if (
+          geoData.status === "OK" &&
+          geoData.results &&
+          geoData.results.length > 0
+        ) {
+          const loc = geoData.results[0].geometry.location;
+          origin = { lat: loc.lat, lng: loc.lng };
+          console.log("✅ Geocoded farmer address:", origin);
+        } else {
+          alert("❌ Could not geocode farmer address.");
           return;
         }
+      } catch (err) {
+        console.error("❌ Geocoding error:", err);
+        alert("❌ Error fetching farmer location.");
+        return;
+      }
+    } else {
+      if (!navigator.geolocation) {
+        alert("❌ Geolocation not supported by your browser.");
+        return;
+      }
 
-        try {
-          const directionsService = new window.google.maps.DirectionsService();
-          const result = await directionsService.route({
-            origin,
-            destination,
-            travelMode: window.google.maps.TravelMode.DRIVING,
-          });
-          setDirections(result);
-        } catch (error) {
-          console.error("Directions request failed:", error);
-          alert("❌ Route generation failed. Please try again.");
-        }
-      },
-      () => alert("Failed to get current location.")
-    );
+      try {
+        origin = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const coords = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+              console.log("📍 Browser-detected location:", coords);
+              resolve(coords);
+            },
+            (err) => {
+              console.error("❌ Geolocation error:", err);
+              alert("❌ Failed to get your current location.");
+              reject();
+            }
+          );
+        });
+      } catch {
+        return;
+      }
+    }
+
+    const distance = getDistance(origin, destination);
+    console.log("📏 Distance (km):", distance.toFixed(2));
+
+    if (distance > 2000) {
+      alert("❌ Cannot generate route: Buyer is too far for road travel.");
+      return;
+    }
+
+    try {
+      const directionsService = new window.google.maps.DirectionsService();
+      const result = await directionsService.route({
+        origin,
+        destination,
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      });
+      setDirections(result);
+      console.log("✅ Directions route set.");
+    } catch (error) {
+      console.error("❌ Directions request failed:", error);
+      alert("❌ Route generation failed. Please try again.");
+    }
   };
 
   const geocodeCoords = async (lat, lng) => {
@@ -173,7 +209,7 @@ const SupplyChain = () => {
   };
 
   return (
-    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={["places"]}>
       <div className="supplychain-container">
         <h2>🚚 Supply Chain Tracking</h2>
         <div className="orders-list">
