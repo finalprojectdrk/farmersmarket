@@ -20,7 +20,7 @@ import { sendEmail } from "../utils/email";
 import { useAuth } from "../auth";
 import "./SupplyChain.css";
 
-const GOOGLE_MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"; // Replace with your key
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
 const LIBRARIES = ["places"];
 
 const correctPhoneNumber = (number) => {
