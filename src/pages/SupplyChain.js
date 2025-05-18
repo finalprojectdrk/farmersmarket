@@ -24,31 +24,29 @@ const SupplyChain = () => {
   const [manualLocationInput, setManualLocationInput] = useState("");
   const user = useAuth();
 
-  // Fetch current farmer info by role + email
-  const fetchCurrentFarmer = async () => {
-    try {
-      const farmersRef = collection(db, "farmers");
-      const q = query(
-        farmersRef,
-        where("email", "==", user.email),
-        where("role", "==", "farmer")
-      );
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const farmerData = snapshot.docs[0].data();
-        setFarmerName(farmerData.name || "");
-        setManualLocationInput(farmerData.location || "");
+  useEffect(() => {
+    // Fetch farmer info on mount
+    const fetchCurrentFarmer = async () => {
+      try {
+        const usersRef = collection(db, "users");
+        const q = query(
+          usersRef,
+          where("email", "==", user.email),
+          where("role", "==", "farmer")
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const farmerData = snapshot.docs[0].data();
+          setFarmerName(farmerData.name || "");
+          setManualLocationInput(farmerData.location || "");
+        }
+      } catch (error) {
+        console.error("Failed to fetch farmer info:", error);
       }
-    } catch (error) {
-      console.error("Failed to fetch farmer info:", error);
-    }
-  };
+    };
 
-  useEffect(() => {
-    if (user?.email) fetchCurrentFarmer();
-  }, [user]);
+    fetchCurrentFarmer();
 
-  useEffect(() => {
     const unsub = onSnapshot(collection(db, "supplyChainOrders"), (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -58,20 +56,18 @@ const SupplyChain = () => {
     });
 
     return () => unsub();
-  }, []);
+  }, [user.email]);
 
-  // Notify all other farmers (except current user) about status update
+  // Notify all other farmers except current user
   const notifyOtherFarmers = async (orderId, newStatus) => {
     try {
-      const farmersRef = collection(db, "farmers");
-      const q = query(farmersRef, where("role", "==", "farmer"));
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("role", "==", "farmer"));
       const farmersSnapshot = await getDocs(q);
 
       for (const farmerDoc of farmersSnapshot.docs) {
         const farmer = farmerDoc.data();
-
-        // Skip notifying current user
-        if (farmer.email === user.email) continue;
+        if (farmer.email === user.email) continue; // skip current farmer
 
         const farmerPhone = farmer.contact.startsWith("+91")
           ? farmer.contact
@@ -96,45 +92,41 @@ const SupplyChain = () => {
     }
   };
 
-  // Handle tracking route between farmer location and buyer location
   const handleTrack = async (order) => {
-    let origin;
+    let origin = null;
 
     if (manualLocationInput) {
-      // Use manual location input (address string) to geocode to lat/lng
+      // Geocode manual input address to lat/lng
       const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ address: manualLocationInput }, (results, status) => {
-        if (status === "OK" && results[0]) {
-          origin = {
-            lat: results[0].geometry.location.lat(),
-            lng: results[0].geometry.location.lng(),
-          };
-          calculateRoute(origin, order);
-        } else {
-          alert("Failed to geocode manual location input.");
-        }
-      });
-    } else {
-      // Use browser location detection
-      if (!navigator.geolocation) {
-        alert("Geolocation not supported.");
+      try {
+        const results = await new Promise((resolve, reject) =>
+          geocoder.geocode({ address: manualLocationInput }, (res, status) =>
+            status === "OK" ? resolve(res) : reject(status)
+          )
+        );
+        origin = {
+          lat: results[0].geometry.location.lat(),
+          lng: results[0].geometry.location.lng(),
+        };
+      } catch {
+        alert("Failed to geocode manual location input.");
         return;
       }
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          origin = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          };
-          calculateRoute(origin, order);
-        },
-        () => alert("Failed to get current location.")
-      );
+    } else if (navigator.geolocation) {
+      // Use current location if manual location not entered
+      origin = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => reject("Failed to get current location.")
+        )
+      ).catch((err) => {
+        alert(err);
+        return null;
+      });
     }
-  };
 
-  const calculateRoute = async (origin, order) => {
+    if (!origin) return;
+
     if (!order.location?.latitude || !order.location?.longitude) {
       alert("Invalid buyer location.");
       return;
@@ -155,25 +147,21 @@ const SupplyChain = () => {
     setDirections(result);
   };
 
-  // Update order status and notify buyer + other farmers
   const handleStatusUpdate = async (order, newStatus) => {
     const orderRef = doc(db, "supplyChainOrders", order.id);
     await updateDoc(orderRef, { status: newStatus });
 
+    // Notify buyer
     try {
-      // Notify buyer
       const phone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
-      await sendSMS(
-        phone,
-        `📦 Hi ${order.buyer}, your order (${order.orderId}) status is now: ${newStatus}. Seller: ${farmerName}`
-      );
+      await sendSMS(phone, `📦 Hi ${order.buyer}, your order (${order.orderId}) status is now: ${newStatus}.`);
 
       const buyerEmail = user?.email;
       if (buyerEmail) {
         await sendEmail(
           buyerEmail,
           "Order Status Updated",
-          `Hi ${order.buyer},\n\nYour order (${order.orderId}) status has been updated to: ${newStatus}.\nSeller: ${farmerName}\n\nThanks,\nFarmers Market`
+          `Hi ${order.buyer},\n\nYour order (${order.orderId}) status has been updated to: ${newStatus}.\n\nThanks,\nFarmers Market`
         );
       }
 
@@ -191,18 +179,16 @@ const SupplyChain = () => {
       <div className="supplychain-container">
         <h2>🚚 Supply Chain Tracking</h2>
 
-        <div style={{ marginBottom: "1rem" }}>
-          <label>
-            Enter your location manually:{" "}
-            <input
-              type="text"
-              value={manualLocationInput}
-              onChange={(e) => setManualLocationInput(e.target.value)}
-              placeholder="Enter your location"
-              style={{ width: "300px" }}
-            />
-          </label>
-        </div>
+        <label>
+          Enter your location (manual):
+          <input
+            type="text"
+            value={manualLocationInput}
+            onChange={(e) => setManualLocationInput(e.target.value)}
+            placeholder="Enter address manually or leave empty for current location"
+            style={{ width: "100%", marginBottom: "1em" }}
+          />
+        </label>
 
         <div className="orders-list">
           {orders.map((order) => (
@@ -224,7 +210,7 @@ const SupplyChain = () => {
           ))}
         </div>
 
-        <div className="map-container" style={{ marginTop: "2rem" }}>
+        <div className="map-container">
           {directions && (
             <GoogleMap
               mapContainerStyle={{ width: "100%", height: "400px" }}
