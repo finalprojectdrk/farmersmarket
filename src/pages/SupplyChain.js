@@ -22,6 +22,7 @@ import "./SupplyChain.css";
 const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
 const LIBRARIES = ["places"];
 
+// Function to format and validate phone numbers
 const correctPhoneNumber = (number) => {
   if (!number) return "";
   const sanitized = number.toString().replace(/\D/g, "");
@@ -40,7 +41,6 @@ const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [directions, setDirections] = useState(null);
   const [farmerInfo, setFarmerInfo] = useState({});
-  const [allFarmers, setAllFarmers] = useState([]); // State to hold all farmers
   const user = useAuth();
 
   useEffect(() => {
@@ -68,20 +68,6 @@ const SupplyChain = () => {
     };
     if (user?.email) fetchFarmer();
   }, [user]);
-
-  useEffect(() => {
-    // Fetch all farmers' phone numbers
-    const fetchAllFarmers = async () => {
-      const farmersRef = query(
-        collection(db, "users"),
-        where("role", "==", "farmer")
-      );
-      const querySnapshot = await getDocs(farmersRef);
-      const farmers = querySnapshot.docs.map((doc) => doc.data());
-      setAllFarmers(farmers);
-    };
-    fetchAllFarmers();
-  }, []);
 
   const getDistance = (a, b) => {
     const R = 6371;
@@ -190,11 +176,20 @@ const SupplyChain = () => {
       const farmerName = farmerInfo?.name || "Farmer";
       const farmerPhone = correctPhoneNumber(farmerInfo?.phone || "");
 
+      // Check if both phones and message are valid before sending SMS
+      if (!buyerPhone || !farmerPhone) {
+        console.error("Phone number is invalid");
+        return;
+      }
+
+      const message = `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`;
+      if (!message) {
+        console.error("Message is empty");
+        return;
+      }
+
       // Notify Buyer
-      await sendSMS(
-        buyerPhone,
-        `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
-      );
+      await sendSMS(buyerPhone, message);
 
       if (order.email) {
         await sendEmail(
@@ -217,43 +212,6 @@ const SupplyChain = () => {
       await updateDoc(orderRef, { farmerDeleted: true });
       alert("✅ Order removed from your view.");
     }
-  };
-
-  const handleSendMessageToAllFarmers = async () => {
-    try {
-      for (const farmer of allFarmers) {
-        const farmerPhone = correctPhoneNumber(farmer.phone);
-        if (farmerPhone) {
-          await sendSMS(
-            farmerPhone,
-            `📦 Your orders are being tracked, and the status is updated. Please check your supply chain status.`
-          );
-        }
-      }
-      alert("✅ Message sent to all farmers.");
-    } catch (error) {
-      console.error("Error sending message to all farmers", error);
-      alert("❌ Failed to send message to all farmers.");
-    }
-  };
-
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      alert("❌ Geolocation not supported by your browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        alert(`Your location detected: Lat: ${latitude}, Lng: ${longitude}`);
-        // You can use this latitude and longitude for further use
-      },
-      (error) => {
-        alert("❌ Failed to detect location.");
-        console.error(error);
-      }
-    );
   };
 
   return (
@@ -280,7 +238,6 @@ const SupplyChain = () => {
                 onChange={(e) => handleManualLocationChange(order.id, e.target.value)}
               />
               <button onClick={() => handleTrack(order)}>🗺️ Track</button>
-              <button onClick={handleDetectLocation}>📍 Detect Location</button>
 
               <div className="order-buttons">
                 <button onClick={() => handleStatusUpdate(order, "Shipped")}>📦 Shipped</button>
@@ -295,10 +252,6 @@ const SupplyChain = () => {
             </div>
           ))}
         </div>
-
-        <button onClick={handleSendMessageToAllFarmers} className="send-message-button">
-          📱 Send message to all Farmers
-        </button>
 
         {directions && (
           <div className="map-container">
