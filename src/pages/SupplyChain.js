@@ -1,3 +1,4 @@
+// SupplyChain.js
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -9,41 +10,18 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import {
-  GoogleMap,
-  LoadScript,
-  DirectionsRenderer,
-} from "@react-google-maps/api";
 import { sendSMS } from "../utils/sms";
 import { sendEmail } from "../utils/email";
 import { useAuth } from "../auth";
-import "./SupplyChain.css";
+import { GoogleMap, LoadScript, DirectionsRenderer } from "@react-google-maps/api";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // Replace with your key
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // replace with your actual API key
 const LIBRARIES = ["places"];
-
-// Function to format and validate phone numbers
-const correctPhoneNumber = (number) => {
-  if (!number) return null;
-  const sanitized = number.toString().replace(/\D/g, "");
-
-  // Ensure the number starts with '+91' for India or has 10 digits
-  if (sanitized.startsWith("91") && sanitized.length === 12) {
-    return `+${sanitized}`;
-  } else if (sanitized.length === 10) {
-    return `+91${sanitized}`;
-  }
-
-  // Log invalid phone numbers
-  console.error(`Invalid phone number: ${number}`);
-  return null; // Return null for invalid numbers
-};
 
 const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
   const [directions, setDirections] = useState(null);
   const [farmerInfo, setFarmerInfo] = useState({});
-  const [manualAddress, setManualAddress] = useState(""); // State to store manual address
   const user = useAuth();
 
   useEffect(() => {
@@ -78,8 +56,10 @@ const SupplyChain = () => {
     const dLon = (b.lng - a.lng) * Math.PI / 180;
     const lat1 = a.lat * Math.PI / 180;
     const lat2 = b.lat * Math.PI / 180;
-    const aCalc = Math.sin(dLat / 2) ** 2 +
-      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+
+    const sinDLat = Math.sin(dLat / 2) ** 2;
+    const sinDLon = Math.sin(dLon / 2) ** 2;
+    const aCalc = sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon;
     const c = 2 * Math.atan2(Math.sqrt(aCalc), Math.sqrt(1 - aCalc));
     return R * c;
   };
@@ -91,7 +71,6 @@ const SupplyChain = () => {
     };
 
     let origin;
-
     if (order.farmerAddress) {
       try {
         const geoResponse = await fetch(
@@ -122,10 +101,11 @@ const SupplyChain = () => {
         origin = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
             (position) => {
-              resolve({
+              const coords = {
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
-              });
+              };
+              resolve(coords);
             },
             (err) => {
               alert("❌ Failed to get your current location.");
@@ -170,28 +150,29 @@ const SupplyChain = () => {
     await updateDoc(orderRef, { farmerAddress: address });
   };
 
+  const detectFarmerLocation = async (orderId) => {
+    if (!navigator.geolocation) return alert("Geolocation not supported");
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const address = await geocodeCoords(pos.coords.latitude, pos.coords.longitude);
+      const orderRef = doc(db, "supplyChainOrders", orderId);
+      await updateDoc(orderRef, { farmerAddress: address });
+    });
+  };
+
   const handleStatusUpdate = async (order, newStatus) => {
     const orderRef = doc(db, "supplyChainOrders", order.id);
     await updateDoc(orderRef, { status: newStatus });
 
     try {
-      const buyerPhone = correctPhoneNumber(order.contact);
-      const farmerName = farmerInfo?.name || "Farmer";
-      const farmerPhone = correctPhoneNumber(farmerInfo?.phone || "");
-
-      if (!buyerPhone || !farmerPhone) {
-        console.error("Phone number is invalid");
-        return;
-      }
-
-      const message = `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`;
-      if (!message) {
-        console.error("Message is empty");
-        return;
-      }
+      const phone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
+      const farmerName = farmerInfo?.name || "Unknown Farmer";
+      const farmerPhone = farmerInfo?.phone || "N/A";
 
       // Notify Buyer
-      await sendSMS(buyerPhone, message);
+      await sendSMS(
+        phone,
+        `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
+      );
 
       if (order.email) {
         await sendEmail(
@@ -201,24 +182,20 @@ const SupplyChain = () => {
         );
       }
 
-      // Fetch all farmers from the "users" collection
-      const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
-      const farmerSnapshot = await getDocs(farmersQuery);
+      // Notify Farmer (only when "Shipped")
+      if (newStatus === "Shipped" && farmerInfo?.phone) {
+        await sendSMS(
+          `+91${farmerInfo.phone}`,
+          `✅ You have marked order (${order.orderId}) as SHIPPED to ${order.buyer}`
+        );
+        await sendEmail(
+          user?.email,
+          "Order Shipped Confirmation",
+          `You have shipped order ${order.orderId} to ${order.buyer}.\nAddress: ${order.address}\nContact: ${order.contact}`
+        );
+      }
 
-      const farmerNotifications = farmerSnapshot.docs.map(async (docSnap) => {
-        const farmer = docSnap.data();
-        const farmerPhone = correctPhoneNumber(farmer.phone);
-
-        if (farmerPhone) {
-          const farmerMessage = `📦 Order ${order.orderId} status updated to ${newStatus}. Buyer: ${order.buyer}, Address: ${order.address}.`;
-          await sendSMS(farmerPhone, farmerMessage);
-        } else {
-          console.error(`Invalid phone number for farmer ${farmer.name}`);
-        }
-      });
-
-      await Promise.all(farmerNotifications);
-      alert("✅ Status updated & notifications sent to all farmers.");
+      alert("✅ Status updated & notifications sent.");
     } catch (error) {
       console.error("Notification error:", error);
       alert("⚠️ Status updated, but failed to send notifications.");
@@ -229,53 +206,72 @@ const SupplyChain = () => {
     if (window.confirm("Are you sure you want to delete this delivered order from your view?")) {
       const orderRef = doc(db, "supplyChainOrders", orderId);
       await updateDoc(orderRef, { farmerDeleted: true });
-      alert("✅ Order deleted from your view.");
+      alert("✅ Order removed from your view.");
     }
   };
 
   return (
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES}>
-      <div className="supply-chain">
-        <h2>Orders</h2>
-
-        {/* Manual Location Input */}
-        <div className="location-section">
-          <label>
-            <strong>Enter Your Address:</strong>
-            <input
-              type="text"
-              value={manualAddress}
-              onChange={(e) => setManualAddress(e.target.value)}
-              placeholder="Enter address"
-            />
-          </label>
-        </div>
-
-        <div className="order-list">
+      <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+        <h2 style={{ textAlign: "center", color: "#2d87f0" }}>🚚 Supply Chain Tracking</h2>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
           {orders.map((order) => (
-            <div key={order.id} className="order-card">
+            <div key={order.id} style={{ border: "1px solid #ccc", borderRadius: "8px", padding: "10px", marginBottom: "20px", width: "80%", backgroundColor: "#f9f9f9" }}>
+              <img src={order.image} alt={order.crop} width={80} height={80} />
               <div><strong>Order ID:</strong> {order.orderId}</div>
+              <div><strong>Crop:</strong> {order.crop}</div>
+              <div><strong>Quantity:</strong> {order.quantity}</div>
               <div><strong>Buyer:</strong> {order.buyer}</div>
+              <div><strong>Buyer Address:</strong> {order.address}</div>
+              <div><strong>Contact:</strong> {order.contact}</div>
               <div><strong>Status:</strong> {order.status}</div>
-              <div><strong>Location:</strong> {order.address}</div>
+              <div><strong>Farmer Address:</strong> {order.farmerAddress || "Not set"}</div>
 
-              <button onClick={() => handleTrack(order)}>Track Order</button>
-              <button onClick={() => handleStatusUpdate(order, "Shipped")}>Mark as Shipped</button>
-              <button onClick={() => handleDelete(order.id)}>Remove Order</button>
+              <input
+                type="text"
+                placeholder="Enter your location"
+                value={order.farmerAddress || ""}
+                onChange={(e) => handleManualLocationChange(order.id, e.target.value)}
+                style={{ width: "100%", padding: "8px", marginBottom: "10px", borderRadius: "4px", border: "1px solid #ccc" }}
+              />
+              <button onClick={() => detectFarmerLocation(order.id)} style={{ padding: "8px 16px", backgroundColor: "#2d87f0", color: "#fff", border: "none", borderRadius: "4px" }}>
+                📍 Detect Location
+              </button>
 
-              {directions && (
-                <GoogleMap
-                  id="direction-map"
-                  mapContainerStyle={{ width: "100%", height: "400px" }}
-                  zoom={14}
-                  center={directions.request.origin}
-                >
-                  <DirectionsRenderer directions={directions} />
-                </GoogleMap>
-              )}
+              <div style={{ display: "flex", justifyContent: "space-around", marginTop: "10px" }}>
+                <button onClick={() => handleTrack(order)} style={{ padding: "8px 16px", backgroundColor: "#28a745", color: "#fff", border: "none", borderRadius: "4px" }}>
+                  🗺️ Track
+                </button>
+                <button onClick={() => handleStatusUpdate(order, "Shipped")} style={{ padding: "8px 16px", backgroundColor: "#007bff", color: "#fff", border: "none", borderRadius: "4px" }}>
+                  📦 Shipped
+                </button>
+                <button onClick={() => handleStatusUpdate(order, "In Transit")} style={{ padding: "8px 16px", backgroundColor: "#ffc107", color: "#fff", border: "none", borderRadius: "4px" }}>
+                  🚚 In Transit
+                </button>
+                <button onClick={() => handleStatusUpdate(order, "Delivered")} style={{ padding: "8px 16px", backgroundColor: "#28a745", color: "#fff", border: "none", borderRadius: "4px" }}>
+                  ✅ Delivered
+                </button>
+                {order.status === "Delivered" && (
+                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white", padding: "8px 16px", borderRadius: "4px", border: "none" }}>
+                    🗑️ Delete
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
+
+        {directions && (
+          <div style={{ marginTop: "20px" }}>
+            <GoogleMap
+              mapContainerStyle={{ width: "100%", height: "400px" }}
+              center={directions.routes[0].overview_path[0]}
+              zoom={10}
+            >
+              <DirectionsRenderer directions={directions} />
+            </GoogleMap>
+          </div>
+        )}
       </div>
     </LoadScript>
   );
