@@ -22,6 +22,7 @@ const Orders = () => {
   const user = useAuth();
   const [orders, setOrders] = useState([]);
   const [directions, setDirections] = useState({});
+  const [showMap, setShowMap] = useState({});
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -39,14 +40,19 @@ const Orders = () => {
   }, [user]);
 
   const trackRoute = (order) => {
-    if (!order?.location?.latitude || !order?.location?.longitude) {
-      alert("Missing location data.");
+    if (
+      !order?.location?.latitude ||
+      !order?.location?.longitude ||
+      !order?.farmerLocation?.latitude ||
+      !order?.farmerLocation?.longitude
+    ) {
+      alert("Missing buyer or farmer location data.");
       return;
     }
 
     const origin = {
-      lat: order.location.latitude,
-      lng: order.location.longitude,
+      lat: order.farmerLocation.latitude,
+      lng: order.farmerLocation.longitude,
     };
 
     const dest = {
@@ -64,6 +70,7 @@ const Orders = () => {
       (result, status) => {
         if (status === "OK") {
           setDirections((prev) => ({ ...prev, [order.id]: result }));
+          setShowMap((prev) => ({ ...prev, [order.id]: true }));
         } else {
           console.error("Directions request failed:", status);
           alert("❌ Failed to get directions");
@@ -88,11 +95,18 @@ const Orders = () => {
                 <p><strong>Status:</strong> {order.status}</p>
                 <p><strong>Quantity:</strong> {order.quantity}</p>
                 <p><strong>Price:</strong> ₹{order.price}</p>
-                <p><strong>Transport:</strong> {order.transport}</p>
-                <button onClick={() => trackRoute(order)}>🗺️ Track</button>
+                <p>
+                  <strong>Farmer Location:</strong>{" "}
+                  {order.farmerAddress || "Not available"}
+                </p>
+                <button onClick={() => trackRoute(order)}>📍 Live Track</button>
               </div>
-              {directions[order.id] && (
-                <GoogleMap mapContainerStyle={containerStyle} center={order.location} zoom={8}>
+              {showMap[order.id] && directions[order.id] && (
+                <GoogleMap
+                  mapContainerStyle={containerStyle}
+                  center={order.farmerLocation}
+                  zoom={8}
+                >
                   <DirectionsRenderer directions={directions[order.id]} />
                 </GoogleMap>
               )}
