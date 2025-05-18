@@ -1,3 +1,4 @@
+// ...all existing imports
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -53,16 +54,25 @@ const SupplyChain = () => {
     if (user?.email) fetchFarmer();
   }, [user]);
 
-  const handleTrack = async (order) => {
-    const destLat = parseFloat(order.location?.latitude);
-    const destLng = parseFloat(order.location?.longitude);
+  const getDistance = (a, b) => {
+    const R = 6371;
+    const dLat = (b.lat - a.lat) * Math.PI / 180;
+    const dLon = (b.lng - a.lng) * Math.PI / 180;
+    const lat1 = a.lat * Math.PI / 180;
+    const lat2 = b.lat * Math.PI / 180;
 
-    if (!destLat || !destLng) {
-      alert("Invalid buyer location coordinates.");
-      console.error("Buyer location invalid:", order.location);
+    const sinDLat = Math.sin(dLat / 2) ** 2;
+    const sinDLon = Math.sin(dLon / 2) ** 2;
+    const aCalc = sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon;
+    const c = 2 * Math.atan2(Math.sqrt(aCalc), Math.sqrt(1 - aCalc));
+    return R * c;
+  };
+
+  const handleTrack = async (order) => {
+    if (!order.location?.latitude || !order.location?.longitude) {
+      alert("Invalid buyer location.");
       return;
     }
-
     if (!navigator.geolocation) {
       alert("Geolocation not supported.");
       return;
@@ -75,12 +85,20 @@ const SupplyChain = () => {
           lng: pos.coords.longitude,
         };
         const destination = {
-          lat: destLat,
-          lng: destLng,
+          lat: order.location.latitude,
+          lng: order.location.longitude,
         };
 
         console.log("Origin:", origin);
         console.log("Destination:", destination);
+
+        const distance = getDistance(origin, destination);
+        console.log("Distance:", distance.toFixed(2), "km");
+
+        if (distance > 2000) {
+          alert("❌ Cannot generate route: Buyer is too far for road travel.");
+          return;
+        }
 
         try {
           const directionsService = new window.google.maps.DirectionsService();
@@ -92,7 +110,7 @@ const SupplyChain = () => {
           setDirections(result);
         } catch (error) {
           console.error("Directions request failed:", error);
-          alert("Unable to find route between origin and destination.");
+          alert("❌ Route generation failed. Please try again.");
         }
       },
       () => alert("Failed to get current location.")
@@ -183,12 +201,7 @@ const SupplyChain = () => {
                 <button onClick={() => handleStatusUpdate(order, "In Transit")}>🚚 In Transit</button>
                 <button onClick={() => handleStatusUpdate(order, "Delivered")}>✅ Delivered</button>
                 {order.status === "Delivered" && (
-                  <button
-                    onClick={() => handleDelete(order.id)}
-                    style={{ backgroundColor: "red", color: "white" }}
-                  >
-                    🗑️ Delete
-                  </button>
+                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white" }}>🗑️ Delete</button>
                 )}
               </div>
             </div>
