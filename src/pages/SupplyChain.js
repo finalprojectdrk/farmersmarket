@@ -1,4 +1,3 @@
-// SupplyChain.js
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -25,7 +24,7 @@ const LIBRARIES = ["places"];
 
 // Function to format and validate phone numbers
 const correctPhoneNumber = (number) => {
-  if (!number) return "";
+  if (!number) return null;
   const sanitized = number.toString().replace(/\D/g, "");
 
   // Ensure the number starts with '+91' for India or has 10 digits
@@ -34,7 +33,9 @@ const correctPhoneNumber = (number) => {
   } else if (sanitized.length === 10) {
     return `+91${sanitized}`;
   }
-  alert(`Invalid phone number: ${number}`);
+
+  // Log invalid phone numbers
+  console.error(`Invalid phone number: ${number}`);
   return null; // Return null for invalid numbers
 };
 
@@ -204,14 +205,22 @@ const SupplyChain = () => {
       const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
       const farmerSnapshot = await getDocs(farmersQuery);
 
+      // Debug log: Checking all fetched farmers
+      console.log('Fetched farmers:', farmerSnapshot.docs.length);
+
       // Loop through all farmers and send them a notification about the order status update
       const farmerNotifications = farmerSnapshot.docs.map(async (docSnap) => {
         const farmer = docSnap.data();
         const farmerPhone = correctPhoneNumber(farmer.phone);
 
+        // Debug log: Checking individual farmer phone
+        console.log(`Sending SMS to farmer ${farmer.name}: ${farmerPhone}`);
+
         if (farmerPhone) {
           const farmerMessage = `📦 Order ${order.orderId} status updated to ${newStatus}. Buyer: ${order.buyer}, Address: ${order.address}.`;
           await sendSMS(farmerPhone, farmerMessage);
+        } else {
+          console.error(`Invalid phone number for farmer ${farmer.name}`);
         }
       });
 
@@ -227,18 +236,17 @@ const SupplyChain = () => {
     if (window.confirm("Are you sure you want to delete this delivered order from your view?")) {
       const orderRef = doc(db, "supplyChainOrders", orderId);
       await updateDoc(orderRef, { farmerDeleted: true });
-      alert("✅ Order removed from your view.");
+      alert("✅ Order deleted from your view.");
     }
   };
 
   return (
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES}>
-      <div className="supplychain-container">
-        <h2>🚚 Supply Chain Tracking</h2>
-        <div className="orders-list">
+      <div>
+        <h2>Orders</h2>
+        <div className="order-list">
           {orders.map((order) => (
-            <div key={order.id} className="order-card">
-              <img src={order.image} alt={order.crop} width={80} height={80} />
+            <div key={order.id}>
               <div><strong>Order ID:</strong> {order.orderId}</div>
               <div><strong>Buyer:</strong> {order.buyer}</div>
               <div><strong>Status:</strong> {order.status}</div>
