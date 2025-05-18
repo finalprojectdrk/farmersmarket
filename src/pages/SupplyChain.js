@@ -19,9 +19,13 @@ import { sendEmail } from "../utils/email";
 import { useAuth } from "../auth";
 import "./SupplyChain.css";
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo"; // replace this
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
+const LIBRARIES = ["places"]; // Move libraries const outside to avoid re-render warning
 
-const libraries = ["places"];
+const isValidMobile = (phone) => {
+  const regex = /^\+91[6-9]\d{9}$/;
+  return regex.test(phone);
+};
 
 const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
@@ -62,9 +66,9 @@ const SupplyChain = () => {
     const lat1 = a.lat * Math.PI / 180;
     const lat2 = b.lat * Math.PI / 180;
 
-    const sinDLat = Math.sin(dLat / 2) ** 2;
-    const sinDLon = Math.sin(dLon / 2) ** 2;
-    const aCalc = sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon;
+    const aCalc =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(aCalc), Math.sqrt(1 - aCalc));
     return R * c;
   };
@@ -107,13 +111,12 @@ const SupplyChain = () => {
         origin = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
             (position) => {
-              const coords = {
+              resolve({
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
-              };
-              resolve(coords);
+              });
             },
-            (err) => {
+            () => {
               alert("❌ Failed to get your current location.");
               reject();
             }
@@ -126,7 +129,7 @@ const SupplyChain = () => {
 
     const distance = getDistance(origin, destination);
     if (distance > 2000) {
-      alert("❌ Cannot generate route: Buyer is too far for road travel.");
+      alert("❌ Buyer too far for road travel.");
       return;
     }
 
@@ -139,7 +142,7 @@ const SupplyChain = () => {
       });
       setDirections(result);
     } catch (error) {
-      alert("❌ Route generation failed. Please try again.");
+      alert("❌ Route generation failed.");
     }
   };
 
@@ -171,56 +174,48 @@ const SupplyChain = () => {
 
     try {
       const farmerName = farmerInfo?.name || "Unknown Farmer";
-      const farmerPhone = farmerInfo?.phone || "N/A";
+      const farmerPhone = farmerInfo?.contact || "N/A";
+
       const buyerPhone = order.contact.startsWith("+91")
         ? order.contact
         : `+91${order.contact}`;
 
-      // 1. Notify Buyer
-      if (newStatus === "Shipped") {
+      // 📲 Notify Buyer
+      if (isValidMobile(buyerPhone)) {
         await sendSMS(
           buyerPhone,
-          `📦 Hi ${order.buyer}, your order (${order.orderId}) has been shipped by ${farmerName}. 📞 ${farmerPhone}`
-        );
-      } else {
-        await sendSMS(
-          buyerPhone,
-          `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}. 👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
+          `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Shipped by: ${farmerName}, 📞 ${farmerPhone}`
         );
       }
 
-      // 2. Notify all farmers (only when shipped)
-      if (newStatus === "Shipped") {
-        const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
-        const snapshot = await getDocs(farmersQuery);
-
-        for (const docSnap of snapshot.docs) {
-          const farmer = docSnap.data();
-          const farmerContact = farmer.phone?.startsWith("+91")
-            ? farmer.phone
-            : `+91${farmer.phone}`;
-          if (farmerContact) {
-            await sendSMS(
-              farmerContact,
-              `📢 Order (${order.orderId}) has been shipped by ${farmerName} to ${order.buyer}.`
-            );
-          }
-        }
-      }
-
-      // 3. Email to Buyer
       if (order.email) {
         await sendEmail(
           order.email,
           "Order Status Updated",
-          `Hi ${order.buyer},\n\nYour order (${order.orderId}) is now: ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}\n📞 ${farmerPhone}\n\nThanks,\nFarmers Market`
+          `Hi ${order.buyer},\n\nYour order (${order.orderId}) is now: ${newStatus}.\nShipped by: ${farmerName}\n📞 ${farmerPhone}\n\nThanks,\nFarmers Market`
         );
+      }
+
+      // 📲 Notify all Farmers
+      const farmerQuery = query(collection(db, "users"), where("role", "==", "farmer"));
+      const farmerSnap = await getDocs(farmerQuery);
+
+      for (const docSnap of farmerSnap.docs) {
+        const farmer = docSnap.data();
+        const phone = farmer.contact?.startsWith("+91")
+          ? farmer.contact
+          : `+91${farmer.contact}`;
+        if (isValidMobile(phone)) {
+          await sendSMS(
+            phone,
+            `📦 Order ${order.orderId} has been shipped by ${farmerName}.`
+          );
+        }
       }
 
       alert("✅ Status updated & notifications sent.");
     } catch (error) {
       console.error("Notification error:", error);
-      alert("❌ Failed to send notifications.");
     }
   };
 
@@ -233,7 +228,7 @@ const SupplyChain = () => {
   };
 
   return (
-    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES}>
       <div className="supplychain-container">
         <h2>🚚 Supply Chain Tracking</h2>
         <div className="orders-list">
