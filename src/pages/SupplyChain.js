@@ -1,4 +1,3 @@
-// ...all existing imports
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -53,20 +52,6 @@ const SupplyChain = () => {
     };
     if (user?.email) fetchFarmer();
   }, [user]);
-
-  const getDistance = (a, b) => {
-    const R = 6371;
-    const dLat = (b.lat - a.lat) * Math.PI / 180;
-    const dLon = (b.lng - a.lng) * Math.PI / 180;
-    const lat1 = a.lat * Math.PI / 180;
-    const lat2 = b.lat * Math.PI / 180;
-
-    const sinDLat = Math.sin(dLat / 2) ** 2;
-    const sinDLon = Math.sin(dLon / 2) ** 2;
-    const aCalc = sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon;
-    const c = 2 * Math.atan2(Math.sqrt(aCalc), Math.sqrt(1 - aCalc));
-    return R * c;
-  };
 
   const isValidMobile = (num) => {
     const cleaned = num.replace(/\s+/g, "");
@@ -130,10 +115,27 @@ const SupplyChain = () => {
     }
   };
 
-  // ... other component functions like handleTrack, render, etc.
-
   return (
-    <div>Supply Chain UI Placeholder</div>
+    <div className="supplychain-container">
+      <h2>🚚 Supply Chain Orders</h2>
+      <div className="orders-list">
+        {orders.map((order) => (
+          <div key={order.id} className="order-card">
+            <p><strong>Order ID:</strong> {order.orderId}</p>
+            <p><strong>Crop:</strong> {order.crop}</p>
+            <p><strong>Quantity:</strong> {order.quantity}</p>
+            <p><strong>Status:</strong> {order.status}</p>
+            <p><strong>Buyer:</strong> {order.buyer}</p>
+            <p><strong>Contact:</strong> {order.contact}</p>
+            <p><strong>Email:</strong> {order.email}</p>
+            <div className="order-actions">
+              <button onClick={() => handleStatusUpdate(order, "Shipped")}>Mark as Shipped</button>
+              <button onClick={() => handleStatusUpdate(order, "Delivered")}>Mark as Delivered</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 
