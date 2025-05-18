@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaLock, FaEnvelope } from "react-icons/fa";
-import "./Auth.css";
+import { FaUser, FaLock, FaEnvelope, FaEye, FaEyeSlash } from "react-icons/fa";
 import { sendSMS } from '../utils/sms';
 import { sendEmail } from '../utils/email';
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -10,6 +9,7 @@ import { auth, db } from "../firebase"; // Make sure you have firebase.js set up
 
 const Login = ({ setIsLoggedIn, setUserType }) => {
   const [user, setUser] = useState({ email: "", password: "" });
+  const [passwordVisible, setPasswordVisible] = useState(false); // State to toggle password visibility
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -77,35 +77,89 @@ const Login = ({ setIsLoggedIn, setUserType }) => {
   };
 
   return (
-    <div className="auth-container">
-      <h2>Login</h2>
+    <div style={{
+      width: '100%',
+      maxWidth: '400px',
+      margin: '0 auto',
+      padding: '20px',
+      backgroundColor: '#fff',
+      borderRadius: '8px',
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+      textAlign: 'center'
+    }}>
+      <h2 style={{ marginBottom: '20px' }}>Login</h2>
       <form onSubmit={handleLogin}>
-        <div className="input-group">
-          <FaEnvelope className="icon" />
+        <div style={{ position: 'relative', marginBottom: '20px' }}>
+          <FaEnvelope style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
           <input
             type="email"
             placeholder="Email"
             value={user.email}
             onChange={(e) => setUser({ ...user, email: e.target.value })}
             required
+            style={{
+              width: '100%',
+              padding: '10px 40px',
+              borderRadius: '4px',
+              border: '1px solid #ccc',
+              fontSize: '16px',
+              color: '#333'
+            }}
           />
         </div>
 
-        <div className="input-group">
-          <FaLock className="icon" />
+        <div style={{ position: 'relative', marginBottom: '20px' }}>
+          <FaLock style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
           <input
-            type="password"
+            type={passwordVisible ? "text" : "password"} // Toggle password visibility
             placeholder="Password"
             value={user.password}
             onChange={(e) => setUser({ ...user, password: e.target.value })}
             required
+            style={{
+              width: '100%',
+              padding: '10px 40px',
+              borderRadius: '4px',
+              border: '1px solid #ccc',
+              fontSize: '16px',
+              color: '#333'
+            }}
           />
+          {/* Eye icon to toggle password visibility */}
+          <span 
+            onClick={() => setPasswordVisible(!passwordVisible)}
+            style={{
+              position: 'absolute',
+              right: '10px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              cursor: 'pointer',
+              color: '#888'
+            }}
+          >
+            {passwordVisible ? <FaEyeSlash /> : <FaEye />}
+          </span>
         </div>
 
-        <button type="submit">Login</button>
+        <button 
+          type="submit" 
+          style={{
+            width: '100%',
+            padding: '12px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '16px',
+            cursor: 'pointer',
+            marginTop: '10px'
+          }}
+        >
+          Login
+        </button>
       </form>
-      <p>
-        Don't have an account? <a href="/register">Register here</a>
+      <p style={{ marginTop: '20px' }}>
+        Don't have an account? <a href="/register" style={{ color: '#4CAF50', textDecoration: 'none' }}>Register here</a>
       </p>
     </div>
   );
