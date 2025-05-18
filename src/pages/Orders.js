@@ -8,15 +8,8 @@ import {
 import { db } from "../firebase";
 import { useAuth } from "../auth";
 import { GoogleMap, DirectionsRenderer, LoadScript } from "@react-google-maps/api";
-import "./Orders.css";
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
-
-const containerStyle = {
-  width: "100%",
-  height: "300px",
-  marginTop: "10px",
-};
 
 const Orders = () => {
   const user = useAuth();
@@ -46,7 +39,7 @@ const Orders = () => {
       !order?.farmerLocation?.latitude ||
       !order?.farmerLocation?.longitude
     ) {
-      alert("Missing buyer or farmer location data.");
+      alert("❌ Missing buyer or farmer location data. Please ensure both locations are set.");
       return;
     }
 
@@ -86,34 +79,114 @@ const Orders = () => {
         {orders.length === 0 ? (
           <p>No orders yet.</p>
         ) : (
-          orders.map((order) => (
-            <div key={order.id} className="order-card">
-              <img src={order.image} alt={order.crop} className="order-image" />
-              <div className="order-info">
-                <h3>{order.crop}</h3>
-                <p><strong>Order ID:</strong> {order.orderId}</p>
-                <p><strong>Status:</strong> {order.status}</p>
-                <p><strong>Quantity:</strong> {order.quantity}</p>
-                <p><strong>Price:</strong> ₹{order.price}</p>
-                <p>
-                  <strong>Farmer Location:</strong>{" "}
-                  {order.farmerAddress || "Not available"}
-                </p>
-                <button onClick={() => trackRoute(order)}>📍 Live Track</button>
+          <div className="orders-list">
+            {orders.map((order) => (
+              <div key={order.id} className="order-card">
+                <img src={order.image} alt={order.crop} className="order-image" />
+                <div className="order-info">
+                  <h3>{order.crop}</h3>
+                  <p><strong>Order ID:</strong> {order.orderId}</p>
+                  <p><strong>Status:</strong> {order.status}</p>
+                  <p><strong>Quantity:</strong> {order.quantity}</p>
+                  <p><strong>Price:</strong> ₹{order.price}</p>
+                  <p><strong>Farmer Location:</strong> {order.farmerAddress || "Not available"}</p>
+                  <button onClick={() => trackRoute(order)}>📍 Live Track</button>
+                </div>
+                {showMap[order.id] && directions[order.id] && (
+                  <GoogleMap
+                    mapContainerStyle={{ width: "100%", height: "300px", marginTop: "10px" }}
+                    center={order.farmerLocation}
+                    zoom={8}
+                  >
+                    <DirectionsRenderer directions={directions[order.id]} />
+                  </GoogleMap>
+                )}
               </div>
-              {showMap[order.id] && directions[order.id] && (
-                <GoogleMap
-                  mapContainerStyle={containerStyle}
-                  center={order.farmerLocation}
-                  zoom={8}
-                >
-                  <DirectionsRenderer directions={directions[order.id]} />
-                </GoogleMap>
-              )}
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
+
+      <style>
+        {`
+          .orders-container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+          }
+
+          .orders-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: space-between;
+          }
+
+          .order-card {
+            width: 100%;
+            max-width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+          }
+
+          .order-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+          }
+
+          .order-info {
+            padding: 15px;
+          }
+
+          .order-info h3 {
+            margin: 10px 0;
+            font-size: 1.25rem;
+          }
+
+          .order-info p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+          }
+
+          button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+          }
+
+          button:hover {
+            background-color: #45a049;
+          }
+
+          @media (max-width: 768px) {
+            .order-card {
+              width: 100%;
+              max-width: 100%;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .order-info h3 {
+              font-size: 1rem;
+            }
+            .order-info p {
+              font-size: 0.8rem;
+            }
+            button {
+              font-size: 0.8rem;
+              padding: 8px;
+            }
+          }
+        `}
+      </style>
     </LoadScript>
   );
 };
