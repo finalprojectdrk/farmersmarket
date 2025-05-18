@@ -1,3 +1,4 @@
+// Checkout.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -49,7 +50,7 @@ const CheckoutForm = () => {
           name: data.name || "Unnamed",
           price: data.price || 0,
           quantity: data.quantity || 1,
-          image: data.image || "", // Store image path
+          image: data.image || "",
         };
       });
       setCart(items);
@@ -96,19 +97,22 @@ const CheckoutForm = () => {
         ? details.contact
         : `+91${details.contact}`;
 
+      // SMS to Buyer
       await sendSMS(
         cleanedPhone,
-        `Hi ${details.name}, your order (${orderId}) has been placed successfully!`
+        `Hi ${details.name}, your order (${orderId}) has been placed! Farmer: Ravi - +91XXXXXXXXXX.`
       );
 
+      // Email to Buyer
       if (user?.email) {
         await sendEmail(
           user.email,
           "Order Confirmation - Farmers Market",
-          `Hi ${details.name},\n\nYour order (${orderId}) has been placed successfully!\n\nThank you,\nFarmers Market Team`
+          `Hi ${details.name},\n\nYour order (${orderId}) has been placed successfully!\n\nFarmer Contact:\nRavi - +91XXXXXXXXXX\n\nThank you,\nFarmers Market Team`
         );
       }
 
+      // Notify Farmers
       const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
       const farmerSnapshot = await getDocs(farmersQuery);
 
@@ -121,7 +125,7 @@ const CheckoutForm = () => {
         if (farmerPhone) {
           return sendSMS(
             farmerPhone,
-            `📢 New Order Alert: Order ${orderId} has been placed. Check your dashboard for details.`
+            `📢 New Order ${orderId} placed by ${details.name}. Address: ${details.address}. Check dashboard for details.`
           );
         }
       });
@@ -158,6 +162,7 @@ const CheckoutForm = () => {
             buyerId: user.uid,
             crop: item.name,
             location,
+            address: details.address, // NEW: Human-readable address
             status: "Pending",
             transport: "Not Assigned",
             createdAt: new Date(),
@@ -165,7 +170,7 @@ const CheckoutForm = () => {
             quantity: item.quantity,
             price: item.price,
             contact: details.contact,
-            image: item.image || "", // Save image path for display in Orders/SupplyChain
+            image: item.image || "",
           });
 
           await deleteDoc(doc(db, "carts", user.uid, "items", item.id));
