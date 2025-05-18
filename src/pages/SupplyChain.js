@@ -1,123 +1,133 @@
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { GoogleMap, DirectionsRenderer, useLoadScript } from '@react-google-maps/api';
-import sendSMS from '../utils/sendSMS';
-import sendEmail from '../utils/sendEmail';
+import React, { useEffect, useState } from "react";
+import {
+  collection,
+  onSnapshot,
+  updateDoc,
+  doc,
+} from "firebase/firestore";
+import { db } from "../firebase";
+import { GoogleMap, LoadScript, DirectionsRenderer } from "@react-google-maps/api";
+import { sendSMS } from "../utils/sms";
+import { sendEmail } from "../utils/email";
+import { useAuth } from "../auth";
+import "./SupplyChain.css";
 
-const libraries = ['places'];
+const GOOGLE_MAPS_API_KEY = "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '300px',
-  borderRadius: '12px',
-  marginTop: '1rem'
-};
-
-const containerStyle = {
-  padding: '1rem',
-  fontFamily: 'Arial, sans-serif'
-};
-
-const cardStyle = {
-  background: '#fff',
-  padding: '1rem',
-  borderRadius: '12px',
-  margin: '1rem 0',
-  boxShadow: '0 0 10px rgba(0,0,0,0.1)'
-};
-
-const imageStyle = {
-  width: '100%',
-  maxHeight: '200px',
-  objectFit: 'cover',
-  borderRadius: '8px'
-};
-
-export default function SupplyChain() {
+const SupplyChain = () => {
   const [orders, setOrders] = useState([]);
-  const [directions, setDirections] = useState({});
-  //const { isLoaded } = useLoadScript({
-  //  googleMapsApiKey: "AIzaSyCR4sCTZyqeLxKMvW_762y5dsH4gfiXRKo";
-    libraries
-  });
+  const [directions, setDirections] = useState(null);
+  const user = useAuth();
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      const querySnapshot = await getDocs(collection(db, 'orders'));
-      const ordersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setOrders(ordersData);
-    };
+    const unsub = onSnapshot(collection(db, "supplyChainOrders"), (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setOrders(data);
+    });
 
-    fetchOrders();
+    return () => unsub();
   }, []);
 
-  const handleTrack = async (orderId, origin, destination) => {
-    if (!isLoaded || !origin || !destination) return;
+  const handleTrack = async (order) => {
+    if (!order.location?.latitude || !order.location?.longitude) {
+      alert("Invalid buyer location.");
+      return;
+    }
 
-    const directionsService = new window.google.maps.DirectionsService();
-    directionsService.route(
-      {
-        origin,
-        destination,
-        travelMode: window.google.maps.TravelMode.DRIVING
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const origin = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        };
+
+        const destination = {
+          lat: order.location.latitude,
+          lng: order.location.longitude,
+        };
+
+        const directionsService = new window.google.maps.DirectionsService();
+        const result = await directionsService.route({
+          origin,
+          destination,
+          travelMode: window.google.maps.TravelMode.DRIVING,
+        });
+
+        setDirections(result);
       },
-      (result, status) => {
-        if (status === window.google.maps.DirectionsStatus.OK) {
-          setDirections(prev => ({ ...prev, [orderId]: result }));
-        } else {
-          alert('Directions request failed due to ' + status);
-        }
-      }
+      () => alert("Failed to get current location.")
     );
   };
 
-  const handleStatusChange = async (orderId, status, buyerPhone, buyerEmail) => {
-    const orderRef = doc(db, 'orders', orderId);
-    await updateDoc(orderRef, { status });
+  const handleStatusUpdate = async (order, newStatus) => {
+    const orderRef = doc(db, "supplyChainOrders", order.id);
+    await updateDoc(orderRef, { status: newStatus });
 
-    const message = `Order ${orderId} status updated to "${status}".`;
-    if (buyerPhone) await sendSMS(buyerPhone, message);
-    if (buyerEmail) await sendEmail(buyerEmail, 'Order Update', message);
-    alert('Status updated and notification sent!');
+    // Notify buyer
+    try {
+      const phone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
+      await sendSMS(phone, `📦 Hi ${order.buyer}, your order (${order.orderId}) status is now: ${newStatus}`);
+
+      const buyerEmail = user?.email;
+      if (buyerEmail) {
+        await sendEmail(
+          buyerEmail,
+          "Order Status Updated",
+          `Hi ${order.buyer},\n\nYour order (${order.orderId}) status has been updated to: ${newStatus}.\n\nThanks,\nFarmers Market`
+        );
+      }
+
+      alert("✅ Status updated & buyer notified.");
+    } catch (error) {
+      console.error("Notification error:", error);
+    }
   };
 
   return (
-    <div style={containerStyle}>
-      <h2>Supply Chain Tracking</h2>
-      {orders.map(order => (
-        <div key={order.id} style={cardStyle}>
-          <h3>Order ID: {order.id}</h3>
-          <p><strong>Product:</strong> {order.productName}</p>
-          <p><strong>Buyer:</strong> {order.buyerName}</p>
-          <p><strong>Status:</strong> {order.status}</p>
-          {order.imageUrl && <img src={order.imageUrl} alt="product" style={imageStyle} />}
-          <div style={{ marginTop: '0.5rem' }}>
-            <button onClick={() => handleTrack(order.id, order.farmerLocation, order.buyerLocation)}>
-              Track
-            </button>
-            <select
-              value={order.status}
-              onChange={e => handleStatusChange(order.id, e.target.value, order.buyerPhone, order.buyerEmail)}
-              style={{ marginLeft: '10px' }}
-            >
-              <option value="Ordered">Ordered</option>
-              <option value="In Transit">In Transit</option>
-              <option value="Delivered">Delivered</option>
-            </select>
-          </div>
-
-          {directions[order.id] && (
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+      <div className="supplychain-container">
+        <h2>🚚 Supply Chain Tracking</h2>
+        <div className="orders-list">
+          {orders.map((order) => (
+            <div key={order.id} className="order-card">
+              <img src={order.image} alt={order.crop} width={80} height={80} />
+              <div><strong>Order ID:</strong> {order.orderId}</div>
+              <div><strong>Crop:</strong> {order.crop}</div>
+              <div><strong>Quantity:</strong> {order.quantity}</div>
+              <div><strong>Buyer:</strong> {order.buyer}</div>
+              <div><strong>Contact:</strong> {order.contact}</div>
+              <div><strong>Payment:</strong> {order.payment}</div>
+              <div><strong>Status:</strong> {order.status}</div>
+              <div className="order-buttons">
+                <button onClick={() => handleTrack(order)}>📍 Track</button>
+                <button onClick={() => handleStatusUpdate(order, "In Transit")}>🚚 In Transit</button>
+                <button onClick={() => handleStatusUpdate(order, "Delivered")}>✅ Delivered</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="map-container">
+          {directions && (
             <GoogleMap
-              mapContainerStyle={mapContainerStyle}
-              zoom={7}
-              center={directions[order.id].routes[0].bounds.getCenter()}
+              mapContainerStyle={{ width: "100%", height: "400px" }}
+              center={directions.routes[0].overview_path[0]}
+              zoom={10}
             >
-              <DirectionsRenderer directions={directions[order.id]} />
+              <DirectionsRenderer directions={directions} />
             </GoogleMap>
           )}
         </div>
-      ))}
-    </div>
+      </div>
+    </LoadScript>
   );
-}
+};
+
+export default SupplyChain;
