@@ -74,23 +74,23 @@ const Orders = () => {
 
   return (
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-      <div className="orders-container">
-        <h2>📦 Your Orders</h2>
+      <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
+        <h2 style={{ fontSize: "2rem", fontWeight: "bold", color: "#333" }}>📦 Your Orders</h2>
         {orders.length === 0 ? (
-          <p>No orders yet.</p>
+          <p style={{ fontSize: "1.2rem", color: "#777" }}>No orders yet.</p>
         ) : (
-          <div className="orders-list">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", justifyContent: "space-between" }}>
             {orders.map((order) => (
-              <div key={order.id} className="order-card">
-                <img src={order.image} alt={order.crop} className="order-image" />
-                <div className="order-info">
-                  <h3>{order.crop}</h3>
-                  <p><strong>Order ID:</strong> {order.orderId}</p>
-                  <p><strong>Status:</strong> {order.status}</p>
-                  <p><strong>Quantity:</strong> {order.quantity}</p>
-                  <p><strong>Price:</strong> ₹{order.price}</p>
-                  <p><strong>Farmer Location:</strong> {order.farmerAddress || "Not available"}</p>
-                  <button onClick={() => trackRoute(order)}>📍 Live Track</button>
+              <div key={order.id} style={{ width: "100%", maxWidth: "300px", border: "1px solid #ddd", borderRadius: "8px", overflow: "hidden", boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)", backgroundColor: "#fff" }}>
+                <img src={order.image} alt={order.crop} style={{ width: "100%", height: "200px", objectFit: "cover" }} />
+                <div style={{ padding: "15px" }}>
+                  <h3 style={{ margin: "10px 0", fontSize: "1.25rem", fontWeight: "600", color: "#333" }}>{order.crop}</h3>
+                  <p style={{ margin: "5px 0", fontSize: "0.9rem", color: "#555" }}><strong>Order ID:</strong> {order.orderId}</p>
+                  <p style={{ margin: "5px 0", fontSize: "0.9rem", color: "#555" }}><strong>Status:</strong> {order.status}</p>
+                  <p style={{ margin: "5px 0", fontSize: "0.9rem", color: "#555" }}><strong>Quantity:</strong> {order.quantity}</p>
+                  <p style={{ margin: "5px 0", fontSize: "0.9rem", color: "#555" }}><strong>Price:</strong> ₹{order.price}</p>
+                  <p style={{ margin: "5px 0", fontSize: "0.9rem", color: "#555" }}><strong>Farmer Location:</strong> {order.farmerAddress || "Not available"}</p>
+                  <button onClick={() => trackRoute(order)} style={{ backgroundColor: "#4CAF50", color: "white", border: "none", padding: "10px", cursor: "pointer", borderRadius: "5px", marginTop: "10px", fontSize: "1rem" }}>📍 Live Track</button>
                 </div>
                 {showMap[order.id] && directions[order.id] && (
                   <GoogleMap
@@ -106,87 +106,6 @@ const Orders = () => {
           </div>
         )}
       </div>
-
-      <style>
-        {`
-          .orders-container {
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-          }
-
-          .orders-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: space-between;
-          }
-
-          .order-card {
-            width: 100%;
-            max-width: 300px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            background-color: #fff;
-          }
-
-          .order-card img {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-          }
-
-          .order-info {
-            padding: 15px;
-          }
-
-          .order-info h3 {
-            margin: 10px 0;
-            font-size: 1.25rem;
-          }
-
-          .order-info p {
-            margin: 5px 0;
-            font-size: 0.9rem;
-          }
-
-          button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 5px;
-            margin-top: 10px;
-          }
-
-          button:hover {
-            background-color: #45a049;
-          }
-
-          @media (max-width: 768px) {
-            .order-card {
-              width: 100%;
-              max-width: 100%;
-            }
-          }
-
-          @media (max-width: 480px) {
-            .order-info h3 {
-              font-size: 1rem;
-            }
-            .order-info p {
-              font-size: 0.8rem;
-            }
-            button {
-              font-size: 0.8rem;
-              padding: 8px;
-            }
-          }
-        `}
-      </style>
     </LoadScript>
   );
 };
