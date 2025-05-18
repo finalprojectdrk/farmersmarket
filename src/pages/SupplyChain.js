@@ -54,14 +54,20 @@ const SupplyChain = () => {
   }, [user]);
 
   const handleTrack = async (order) => {
-    if (!order.location?.latitude || !order.location?.longitude) {
-      alert("Invalid buyer location.");
+    const destLat = parseFloat(order.location?.latitude);
+    const destLng = parseFloat(order.location?.longitude);
+
+    if (!destLat || !destLng) {
+      alert("Invalid buyer location coordinates.");
+      console.error("Buyer location invalid:", order.location);
       return;
     }
+
     if (!navigator.geolocation) {
       alert("Geolocation not supported.");
       return;
     }
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const origin = {
@@ -69,16 +75,25 @@ const SupplyChain = () => {
           lng: pos.coords.longitude,
         };
         const destination = {
-          lat: order.location.latitude,
-          lng: order.location.longitude,
+          lat: destLat,
+          lng: destLng,
         };
-        const directionsService = new window.google.maps.DirectionsService();
-        const result = await directionsService.route({
-          origin,
-          destination,
-          travelMode: window.google.maps.TravelMode.DRIVING,
-        });
-        setDirections(result);
+
+        console.log("Origin:", origin);
+        console.log("Destination:", destination);
+
+        try {
+          const directionsService = new window.google.maps.DirectionsService();
+          const result = await directionsService.route({
+            origin,
+            destination,
+            travelMode: window.google.maps.TravelMode.DRIVING,
+          });
+          setDirections(result);
+        } catch (error) {
+          console.error("Directions request failed:", error);
+          alert("Unable to find route between origin and destination.");
+        }
       },
       () => alert("Failed to get current location.")
     );
@@ -113,7 +128,10 @@ const SupplyChain = () => {
       const phone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
       const farmerName = farmerInfo?.name || "Unknown Farmer";
       const farmerPhone = farmerInfo?.phone || "N/A";
-      await sendSMS(phone, `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`);
+      await sendSMS(
+        phone,
+        `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
+      );
       const buyerEmail = order.email;
       if (buyerEmail) {
         await sendEmail(
@@ -165,7 +183,12 @@ const SupplyChain = () => {
                 <button onClick={() => handleStatusUpdate(order, "In Transit")}>🚚 In Transit</button>
                 <button onClick={() => handleStatusUpdate(order, "Delivered")}>✅ Delivered</button>
                 {order.status === "Delivered" && (
-                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white" }}>🗑️ Delete</button>
+                  <button
+                    onClick={() => handleDelete(order.id)}
+                    style={{ backgroundColor: "red", color: "white" }}
+                  >
+                    🗑️ Delete
+                  </button>
                 )}
               </div>
             </div>
