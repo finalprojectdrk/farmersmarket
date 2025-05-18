@@ -277,47 +277,6 @@ const FarmerDashboard = () => {
         )}
       </div>
 
-
-      <div className="products-section card">
-        <h3>🌾 Your Products</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Price</th>
-              <th>Quantity</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentProductData.map((product) => (
-              <tr key={product.id}>
-                <td>{product.name}</td>
-                <td>{product.price}</td>
-                <td>{product.quantity}</td>
-                <td>
-                  <button onClick={() => handleDelete(product.id)}>Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="pagination">
-          <button onClick={() => setProductPage((p) => Math.max(p - 1, 1))} disabled={productPage === 1}>
-            Previous
-          </button>
-          <span>
-            Page {productPage} of {productTotalPages}
-          </span>
-          <button
-            onClick={() => setProductPage((p) => Math.min(p + 1, productTotalPages))}
-            disabled={productPage === productTotalPages}
-          >
-            Next
-          </button>
-        </div>
-      </div>
     </div>
   );
 };
