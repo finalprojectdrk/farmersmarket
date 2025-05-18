@@ -1,3 +1,4 @@
+// SupplyChain.js
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -199,7 +200,23 @@ const SupplyChain = () => {
         );
       }
 
-      alert("✅ Status updated & notifications sent.");
+      // Fetch all farmers from the "users" collection
+      const farmersQuery = query(collection(db, "users"), where("role", "==", "farmer"));
+      const farmerSnapshot = await getDocs(farmersQuery);
+
+      // Loop through all farmers and send them a notification about the order status update
+      const farmerNotifications = farmerSnapshot.docs.map(async (docSnap) => {
+        const farmer = docSnap.data();
+        const farmerPhone = correctPhoneNumber(farmer.phone);
+
+        if (farmerPhone) {
+          const farmerMessage = `📦 Order ${order.orderId} status updated to ${newStatus}. Buyer: ${order.buyer}, Address: ${order.address}.`;
+          await sendSMS(farmerPhone, farmerMessage);
+        }
+      });
+
+      await Promise.all(farmerNotifications);  // Send SMS to all farmers
+      alert("✅ Status updated & notifications sent to all farmers.");
     } catch (error) {
       console.error("Notification error:", error);
       alert("⚠️ Status updated, but failed to send notifications.");
@@ -223,47 +240,27 @@ const SupplyChain = () => {
             <div key={order.id} className="order-card">
               <img src={order.image} alt={order.crop} width={80} height={80} />
               <div><strong>Order ID:</strong> {order.orderId}</div>
-              <div><strong>Crop:</strong> {order.crop}</div>
-              <div><strong>Quantity:</strong> {order.quantity}</div>
               <div><strong>Buyer:</strong> {order.buyer}</div>
-              <div><strong>Buyer Address:</strong> {order.address}</div>
-              <div><strong>Contact:</strong> {order.contact}</div>
               <div><strong>Status:</strong> {order.status}</div>
-              <div><strong>Farmer Address:</strong> {order.farmerAddress || "Not set"}</div>
+              <div><strong>Location:</strong> {order.address}</div>
 
-              <input
-                type="text"
-                placeholder="Enter your location"
-                value={order.farmerAddress || ""}
-                onChange={(e) => handleManualLocationChange(order.id, e.target.value)}
-              />
-              <button onClick={() => handleTrack(order)}>🗺️ Track</button>
+              <button onClick={() => handleTrack(order)}>Track Order</button>
+              <button onClick={() => handleStatusUpdate(order, "Shipped")}>Mark as Shipped</button>
+              <button onClick={() => handleDelete(order.id)}>Remove Order</button>
 
-              <div className="order-buttons">
-                <button onClick={() => handleStatusUpdate(order, "Shipped")}>📦 Shipped</button>
-                <button onClick={() => handleStatusUpdate(order, "In Transit")}>🚚 In Transit</button>
-                <button onClick={() => handleStatusUpdate(order, "Delivered")}>✅ Delivered</button>
-                {order.status === "Delivered" && (
-                  <button onClick={() => handleDelete(order.id)} style={{ backgroundColor: "red", color: "white" }}>
-                    🗑️ Delete
-                  </button>
-                )}
-              </div>
+              {directions && (
+                <GoogleMap
+                  id="direction-map"
+                  mapContainerStyle={{ width: "100%", height: "400px" }}
+                  zoom={14}
+                  center={directions.request.origin}
+                >
+                  <DirectionsRenderer directions={directions} />
+                </GoogleMap>
+              )}
             </div>
           ))}
         </div>
-
-        {directions && (
-          <div className="map-container">
-            <GoogleMap
-              mapContainerStyle={{ width: "100%", height: "400px" }}
-              center={directions.routes[0].overview_path[0]}
-              zoom={10}
-            >
-              <DirectionsRenderer directions={directions} />
-            </GoogleMap>
-          </div>
-        )}
       </div>
     </LoadScript>
   );
