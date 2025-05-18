@@ -1,3 +1,4 @@
+
 // ...all existing imports
 import React, { useEffect, useState } from "react";
 import {
@@ -178,46 +179,25 @@ const SupplyChain = () => {
   const handleStatusUpdate = async (order, newStatus) => {
     const orderRef = doc(db, "supplyChainOrders", order.id);
     await updateDoc(orderRef, { status: newStatus });
-
     try {
       const phone = order.contact.startsWith("+91") ? order.contact : `+91${order.contact}`;
       const farmerName = farmerInfo?.name || "Unknown Farmer";
       const farmerPhone = farmerInfo?.phone || "N/A";
-
       await sendSMS(
         phone,
         `📦 Hi ${order.buyer}, your order (${order.orderId}) is now ${newStatus}.\n👨‍🌾 Farmer: ${farmerName}, 📞 ${farmerPhone}`
       );
-
-      if (order.email) {
+      const buyerEmail = order.email;
+      if (buyerEmail) {
         await sendEmail(
-          order.email,
+          buyerEmail,
           "Order Status Updated",
           `Hi ${order.buyer},\n\nYour order (${order.orderId}) status is now: ${newStatus}.\n\n👨‍🌾 Farmer: ${farmerName}\n📞 Contact: ${farmerPhone}\n\nThanks,\nFarmers Market`
         );
       }
-
-      // 🔔 Notify all farmers
-      const farmersSnapshot = await getDocs(
-        query(collection(db, "users"), where("role", "==", "farmer"))
-      );
-
-      for (const farmerDoc of farmersSnapshot.docs) {
-        const farmer = farmerDoc.data();
-        const farmerPhone = farmer.phone?.startsWith("+91") ? farmer.phone : `+91${farmer.phone}`;
-
-        if (farmerPhone) {
-          await sendSMS(
-            farmerPhone,
-            `📢 Order Update: Order (${order.orderId}) for ${order.crop} is now "${newStatus}". Buyer: ${order.buyer}`
-          );
-        }
-      }
-
-      alert("✅ Status updated & all farmers notified.");
+      alert("✅ Status updated & buyer notified.");
     } catch (error) {
-      console.error("❌ Notification error:", error);
-      alert("❌ Failed to send some notifications.");
+      console.error("Notification error:", error);
     }
   };
 
